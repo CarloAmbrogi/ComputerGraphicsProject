@@ -1,7 +1,35 @@
-Labirinto autogenareato
+Labirinto autogenareato:
+- Viene randomizzato il punto di partenza. Devi trovare le chiavi nascoste in giro per il labirinto, trovare la porta (nascosta anch'essa nel labirinto) e aprirla con le chiavi, entrando dentro la porta c'è un corridoio e poi il boss (deterministici). Sconfiggi il bot e vinci. Il prossimo labirinto viene generato più grande e con più chiavi.
+- Ci sono oggetti in giro nascosti per il labirinto (cibo)
+
+
 Barra della fame (vita) che decresce automaticamente
 Cibo per recuperare energia
 Gioco in prima persona
 Nemici fermi che starnano in punto a caso (poi li muoviamo)
 Dungeon (arene con nemici più forti)
 (Puzzle)
+
+Cosa dobbiamo fare:
+-loads the geometries and the textures - Trovare degli asset carini e applicarci la texture sopra
+-sets the shaders scritti da noi
+-sets the vertex formats and the uniforms
+-creates the graphics pipeline - al lato pratico niente di particolare
+-records the draw-calls in the command buffers - bho
+-Object need to be in the virtual world then need to be projected in the window view and then on the screen
+-World matrices should be composed combining translations, rotations and scaling
+-Gli oggetti encoded as meshes, position dei vertici, direction of the normal vector, the texture -coordinates, color
+-Muri del labirinto: dynamically created with an algorithm
+-Alcune Meshes loaded from an external file e posizionate dall'algoritmo (file OBJ or GLTF)
+-Navigation keyboard
+-pipelines should be defined to approximate the rendering equation (es Lambert, etc)
+-Shaders will communicate with the application using uniform buffers, where they will receive, for example: The world, view, and projection matrices, The position, direction, color and parameters for the lights, The textures required by the shaders, Other parameters necessary to compute the BRDF, such as the exponent in Phong or Blinn
+specular model, or a threshold in a Toon shader, The position of the viewer.
+-The final color of the pixels will be computed with fragment shaders (es Lambert, etc) (lighting techniques)
+-The parameters of the material, such as diffuse and specular colors, emission, roughness, metalness
+
+ToDo:
+Ripassare le slide
+Logica del labirinto (generazione automatica, posizionamento del cibo, nemici, partenza / arrivo)
+Cercare gli asset
+Calcoli per la gestione del combattimento

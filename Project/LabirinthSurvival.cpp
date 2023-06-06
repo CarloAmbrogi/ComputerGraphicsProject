@@ -67,7 +67,7 @@ class Assignment08 : public BaseProject {
 		// window size, titile and initial background
 		windowWidth = 800;
 		windowHeight = 600;
-		windowTitle = "Assignment 08";
+		windowTitle = "LabirinthSurvival";
     	windowResizable = GLFW_TRUE;
 		initialBackgroundColor = {0.0f, 0.6f, 0.8f, 1.0f};
 		
@@ -298,6 +298,7 @@ class Assignment08 : public BaseProject {
 	}
 	
 	char **genMaze(int r, int c) {
+        // Here the labirinth is randomly generated
 		int row = 2*r+1, col=2*c+1;
 		char **out = (char **)calloc(row, sizeof(char *));
 		for(int i = 0; i < row; i++) {

@@ -15,7 +15,7 @@ void Assignment08::createMazeMesh(int row, int col, char **maze) {
 	//
 	// The example below creates a square, with four vertices and two triangles.
 	// It must be deleted and replaced with your code creating the mesh of the maze.
-	
+    
 	// Fill array vPos with the positions of the vertices of the mesh
 	vPos.push_back(0.0); vPos.push_back(0.0); vPos.push_back(0.0);	// vertex 0
 	vPos.push_back(1.0); vPos.push_back(0.0); vPos.push_back(0.0);	// vertex 1
