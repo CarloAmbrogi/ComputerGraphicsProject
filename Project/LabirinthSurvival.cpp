@@ -18,25 +18,6 @@ struct GlobalUniformBufferObject {
 
 class Assignment08;
 
-/*char *mazeIn[] = {
-	(char*)("### ###########"),
-	(char*)("# #   #       #"),
-	(char*)("# # ### ### ###"),
-	(char*)("#   #     #   #"),
-	(char*)("# ### ####### #"),
-	(char*)("#   # #       #"),
-	(char*)("### ### #######"),
-	(char*)("# #   #       #"),
-	(char*)("# ### ####### #"),
-	(char*)("# #   #   #   #"),
-	(char*)("# # ### # # # #"),
-	(char*)("#   #   # # # #"),
-	(char*)("# ##### # # # #"),
-	(char*)("#       #   # #"),
-	(char*)("############# #")
-};*/
-
-
 // MAIN ! 
 class Assignment08 : public BaseProject {
 	protected:
@@ -109,18 +90,17 @@ class Assignment08 : public BaseProject {
  								    VK_CULL_MODE_NONE, false);
 
 		// Models, textures and Descriptors (values assigned to the uniforms)
-		const int r = 7, c = 7;
+		const int r = 60, c = 60;
 		char **maze = genMaze(r, c);
-//		char **maze = mazeIn;
 		
 //std::cout << "Maze Show\n";
-		for(int i=0; i < 2*r+1; i++) {
+		for(int i=0; i < r; i++) {
 			std::cout << maze[i] << "\n";
 		}
 		std::cout << "\n";
 		
 //std::cout << "create Mesh\n";
-		createMazeMesh(2*r+1, 2*c+1, maze);
+		createMazeMesh(r, c, maze);
 		std::cout << "Mesh size: V=" << vPos.size() << ", I=" << vIdx.size() << "\n";
 		
 		M.BP = this;
@@ -145,7 +125,7 @@ class Assignment08 : public BaseProject {
 		M.createIndexBuffer();
 		std::cout << "Created model: V=" << M.vertices.size() << ", I=" << M.indices.size() << "\n";
 
-		destroyMaze(2*r+1, 2*c+1, maze);
+		destroyMaze(r, c, maze);
 	}
 	
 	// Here you create your pipelines and Descriptor Sets!
@@ -244,83 +224,269 @@ class Assignment08 : public BaseProject {
 		DS.map(currentImage, &gubo, sizeof(gubo), 1);
 	}
 	
-	void recMaze(int row, int col, char **maze, int sr, int sc) {
-		int dirs[4];
-		
-		dirs[0] = dirs[1] = dirs[2] = dirs[3] = 0;
-		for(int i = 1; i <= 4; i++) {
-			int p = rand() % 4;
-			for(int j = 0; j < 4; j++) {
-				if(dirs[(p+j)%4] == 0) {
-					dirs[(p+j)%4] = i;
-					break;
-				}
-			}
-		}
-		for(int j = 0; j < 4; j++) {
-			switch(dirs[j]) {
-				case 1:
-					if(sr - 2 < 0) continue;
-					if(maze[sr-2][sc] == '#') {
-						maze[sr-1][sc] = ' ';
-						maze[sr-2][sc] = ' ';
-						recMaze(row, col, maze, sr-2, sc);
-					}
-					break;
-				case 2:
-					if(sr + 2 >= row) continue;
-					if(maze[sr+2][sc] == '#') {
-						maze[sr+1][sc] = ' ';
-						maze[sr+2][sc] = ' ';
-						recMaze(row, col, maze, sr+2, sc);
-					}
-					break;
-				case 3:
-					if(sc - 2 < 0) continue;
-					if(maze[sr][sc-2] == '#') {
-						maze[sr][sc-1] = ' ';
-						maze[sr][sc-2] = ' ';
-						recMaze(row, col, maze, sr, sc-2);
-					}
-					break;
-				case 4:
-					if(sc + 2 >= col) continue;
-					if(maze[sr][sc+2] == '#') {
-						maze[sr][sc+1] = ' ';
-						maze[sr][sc+2] = ' ';
-						recMaze(row, col, maze, sr, sc+2);
-					}
-					break;
-				default:
-					break;
-			}
-		}
-	}
-	
-	char **genMaze(int r, int c) {
+	char **genMaze(int nr, int nc) {
         // Here the labirinth is randomly generated
-		int row = 2*r+1, col=2*c+1;
-		char **out = (char **)calloc(row, sizeof(char *));
-		for(int i = 0; i < row; i++) {
-			out[i] = (char *)malloc(col+1);
-			for(int j = 0; j < col; j++) {
+        // # Wall
+        // P Player
+        // K Key
+        // D Door
+        // B Boss fight
+		char **out = (char **)calloc(nr, sizeof(char *));
+		for(int i = 0; i < nr; i++) {
+			out[i] = (char *)malloc(nc+1);
+			for(int j = 0; j < nc; j++) {
 				out[i][j] = '#';
 			}
-			out[i][col] = 0;
+			out[i][nc] = 0;
 		}
-		
 		srand (time(NULL));
-		
-		int sr = (rand() % (row/2))*2 + 1, sc = (rand() % (col/2))*2 + 1;
-		out[sr][sc] = ' ';
-		
-		recMaze(row, col, out, sr, sc);
-		
-		sc = (rand() % (col/2))*2 + 1;
-		out[0][sc] = ' ';
-		sc = (rand() % (col/2))*2 + 1;
-		out[row-1][sc] = ' ';
-		
+        // Select randomly where to locate the boss fight
+        const int xLenghtBossFight = 7;
+        const int yLenghtBossFight = 10;
+        int startXBossFight = rand() % (nr - xLenghtBossFight);
+        int endXBossFight = startXBossFight + xLenghtBossFight;
+        int startYBossFight = rand() % (nc - yLenghtBossFight);
+        int endYBossFight = startYBossFight + yLenghtBossFight;
+        for(int i = startXBossFight; i < endXBossFight; i++){//place boss fight
+            for(int j = startYBossFight; j < endYBossFight; j++){
+                out[i][j] = 'B';
+            }
+        }
+        for(int i = startXBossFight; i < endXBossFight; i++){//place waals around boss fight
+            out[i][startYBossFight] = 'W';
+            out[i][endYBossFight-1] = 'W';
+        }
+        for(int j = startYBossFight; j < endYBossFight; j++){
+            out[startXBossFight][j] = 'W';
+            out[endXBossFight-1][j] = 'W';
+        }
+        out[startXBossFight+(xLenghtBossFight/2)][endYBossFight-1] = 'D';//place the door
+		// Select where to dig randomly the labirinth
+        int nEstr = (nr * nc) / 7;
+        for(int count = 0; count < nEstr; count++){
+            int randX = rand() % nr;
+            int randY = rand() % nc;
+            if(out[randX][randY] == '#'){
+                int elem = rand() % 3;//elem 0 = road limit ; elem 1 = turn ; elem 2 = cross
+                char elemChar = 'L';//road limit
+                if(elem == 1){
+                    elemChar = 'T';//turn
+                }
+                if(elem == 2){
+                    elemChar = 'C';//cross
+                }
+                out[randX][randY] = elemChar;
+            }
+        }
+        // Add the border wall
+        for(int i = 0; i < nr; i++){
+            out[i][0] = 'W';
+            out[i][nc-1] = 'W';
+        }
+        for(int j = 0; j < nc; j++){
+            out[0][j] = 'W';
+            out[nr-1][j] = 'W';
+        }
+        // Dig the labirinth
+        const int maxIteration = 5;
+        bool firstIteration = true;
+        for(int count = 0; count < maxIteration; count++){//dig roads for some iterations
+            for(int i = 0; i < nr; i++){//iterations on the row roads
+                for(int j = 0; j < nc; j++){
+                    if(out[i][j] == 'D' && firstIteration == true){//first dig starting from the door
+                        int adv = j + 1;
+                        bool flag = true;
+                        bool firstTimeFoundLimit = true;
+                        while(flag == true){
+                            if(out[i][adv] == 'L'){
+                                if(firstTimeFoundLimit == true){
+                                    firstTimeFoundLimit = false;
+                                    out[i][adv] = 'c';
+                                } else {
+                                    out[i][adv] = ' ';
+                                    flag = false;
+                                }
+                            } else {
+                                if(out[i][adv] == 'W' || out[i][adv] == 'D' || out[i][adv] == ' ' || out[i][adv] == 't' || out[i][adv] == 'c'){
+                                    flag = false;
+                                } else if(out[i][adv] == 'T'){
+                                    out[i][adv] = 't';
+                                } else if(out[i][adv] == 'C'){
+                                    out[i][adv] = 'c';
+                                } else {
+                                    out[i][adv] = ' ';
+                                }
+                            }
+                            adv++;
+                        }
+                        j = adv;
+                    } else if(out[i][j] == 't' || out[i][j] == 'c'){//turn move or cross move
+                        bool itsACross = false;
+                        if(out[i][j] == 'c'){
+                            itsACross = true;
+                        }
+                        out[i][j] = ' ';
+                        int turnLeftRight = rand() % 2;//elem 0 = turn left ; elem 1 = turn right
+                        int incr = 1;
+                        if(turnLeftRight == 1 && itsACross == false){
+                            incr = -1;
+                        }
+                        int initial = j;
+                        int adv = initial + incr;
+                        bool flag = true;
+                        while(flag == true){
+                            if(out[i][adv] == 'L'){
+                                out[i][adv] = ' ';
+                                flag = false;
+                            } else {
+                                if(out[i][adv] == 'W' || out[i][adv] == 'D' || out[i][adv] == ' ' || out[i][adv] == 't' || out[i][adv] == 'c'){
+                                    flag = false;
+                                } else if(out[i][adv] == 'T'){
+                                    out[i][adv] = 't';
+                                } else if(out[i][adv] == 'C'){
+                                    out[i][adv] = 'c';
+                                } else {
+                                    out[i][adv] = ' ';
+                                }
+                            }
+                            adv += incr;
+                        }
+                        if(adv > j){
+                            j = adv;
+                        }
+                        if(itsACross == true){
+                            adv = initial - 1;
+                            flag = true;
+                            while(flag == true){
+                                if(out[i][adv] == 'L'){
+                                    out[i][adv] = ' ';
+                                    flag = false;
+                                } else {
+                                    if(out[i][adv] == 'W' || out[i][adv] == 'D' || out[i][adv] == ' ' || out[i][adv] == 't' || out[i][adv] == 'c'){
+                                        flag = false;
+                                    } else if(out[i][adv] == 'T'){
+                                        out[i][adv] = 't';
+                                    } else if(out[i][adv] == 'C'){
+                                        out[i][adv] = 'c';
+                                    } else {
+                                        out[i][adv] = ' ';
+                                    }
+                                }
+                                adv -= 1;
+                            }
+                        }
+                    }
+                }
+                
+            }
+            for(int j = 0; j < nc; j++){//iterations on the col roads
+                for(int i = 0; i < nr; i++){
+                    if(out[i][j] == 't' || out[i][j] == 'c'){//turn move or cross move
+                        bool itsACross = false;
+                        if(out[i][j] == 'c'){
+                            itsACross = true;
+                        }
+                        out[i][j] = ' ';
+                        int turnUpDown = rand() % 2;//elem 0 = turn up ; elem 1 = turn down
+                        int incr = 1;
+                        if(turnUpDown == 1 && itsACross == false){
+                            incr = -1;
+                        }
+                        int initial = i;
+                        int adv = initial + incr;
+                        bool flag = true;
+                        while(flag == true){
+                            if(out[adv][j] == 'L'){
+                                out[adv][j] = ' ';
+                                flag = false;
+                            } else {
+                                if(out[adv][j] == 'W' || out[adv][j] == 'D' || out[adv][j] == ' ' || out[adv][j] == 't' || out[adv][j] == 'c'){
+                                    flag = false;
+                                } else if(out[adv][j] == 'T'){
+                                    out[adv][j] = 't';
+                                } else if(out[adv][j] == 'C'){
+                                    out[adv][j] = 'c';
+                                } else {
+                                    out[adv][j] = ' ';
+                                }
+                            }
+                            adv += incr;
+                        }
+                        if(adv > i){
+                            i = adv;
+                        }
+                        if(itsACross == true){
+                            adv = initial - 1;
+                            flag = true;
+                            while(flag == true){
+                                if(out[adv][j] == 'L'){
+                                    out[adv][j] = ' ';
+                                    flag = false;
+                                } else {
+                                    if(out[adv][j] == 'W' || out[adv][j] == 'D' || out[adv][j] == ' ' || out[adv][j] == 't' || out[adv][j] == 'c'){
+                                        flag = false;
+                                    } else if(out[adv][j] == 'T'){
+                                        out[adv][j] = 't';
+                                    } else if(out[adv][j] == 'C'){
+                                        out[adv][j] = 'c';
+                                    } else {
+                                        out[adv][j] = ' ';
+                                    }
+                                }
+                                adv -= 1;
+                            }
+                        }
+                    }
+                }
+            }
+            firstIteration = false;
+        }
+        // Adjust labirinth
+        for(int i = 0; i < nr; i++){
+            for(int j = 0; j < nc; j++){
+                if(out[i][j] == 'W' || out[i][j] == 't' || out[i][j] == 'c' || out[i][j] == 'T' || out[i][j] == 'C' || out[i][j] == 'L'){
+                    out[i][j] = '#';
+                }
+            }
+        }
+        // Count cells
+        int cellNum = 0;
+        for(int i = 0; i < nr; i++){
+            for(int j = 0; j < nc; j++){
+                if(out[i][j] == ' '){
+                    cellNum++;
+                }
+            }
+        }
+        const int minCellNum = 25;
+        if(cellNum < minCellNum){
+            return genMaze(nr, nc);
+        }
+        // Locate the palyer and the characters
+        const int minNumOfKeys = 3;
+        const int maxNumOfKeys = 7;
+        int varNumOfKeys = maxNumOfKeys - minNumOfKeys;
+        int numOfKeys = rand() % varNumOfKeys;
+        numOfKeys += minNumOfKeys;
+        bool playerToBeLocated = true;
+        for(int count = 0; count < numOfKeys + 1; count++){
+            int location = rand() % cellNum;
+            for(int i = 0; i < nr; i++){
+                for(int j = 0; j < nc; j++){
+                    if(out[i][j] == ' '){
+                        location -= 1;
+                        if(location == 0 && out[i][j] == ' '){
+                            out[i][j] = 'K';
+                            if(playerToBeLocated){
+                                out[i][j] = 'P';
+                            }
+                        }
+                    }
+                }
+            }
+            playerToBeLocated = false;
+        }
+        // Return
 		return out;
 	}
 	
