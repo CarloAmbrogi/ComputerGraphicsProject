@@ -1,0 +1,7 @@
+Labirinto autogenareato
+Barra della fame (vita) che decresce automaticamente
+Cibo per recuperare energia
+Gioco in prima persona
+Nemici fermi che starnano in punto a caso (poi li muoviamo)
+Dungeon (arene con nemici più forti)
+(Puzzle)
