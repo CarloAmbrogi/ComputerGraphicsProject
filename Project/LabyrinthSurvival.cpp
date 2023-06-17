@@ -3,6 +3,11 @@
 #include "Starter.hpp"
 
 
+// num rows and cols labyrinth
+#define NUMROW 60
+#define NUMCOL 60
+
+
 // The uniform buffer object used in this example
 struct UniformBufferObject {
 	alignas(16) glm::mat4 mvpMat;
@@ -16,10 +21,10 @@ struct GlobalUniformBufferObject {
 	alignas(16) glm::vec3 eyePos;
 };
 
-class Assignment08;
+class LabyrinthSurvival;
 
 // MAIN ! 
-class Assignment08 : public BaseProject {
+class LabyrinthSurvival : public BaseProject {
 	protected:
 	// Here you list all the Vulkan objects you need:
 	
@@ -32,9 +37,13 @@ class Assignment08 : public BaseProject {
 	// Models, textures and Descriptors (values assigned to the uniforms)
 	Model M{};
 	DescriptorSet DS;
+    
+    bool labyrinthShape[NUMROW][NUMCOL];//to keep where there is a wall in the labyrinth
+    bool labyrinthShapeInitialized = false;//if the labyrinth is initialized
 	
 	// Other application parameters
-	glm::vec3 CamPos = glm::vec3(0.5, 0.5, 10.0);
+	glm::vec3 CamPos = glm::vec3(0.5, 0.5, 10.0);//camera position
+    glm::vec3 CamPosPrec = glm::vec3(0.5, 0.5, 10.0);//remember prew position to check if you are not overriding a wall
 	float CamAlpha = 0.0f;
 	float CamBeta = 0.0f;
 	float Ar;
@@ -48,7 +57,7 @@ class Assignment08 : public BaseProject {
 		// window size, titile and initial background
 		windowWidth = 800;
 		windowHeight = 600;
-		windowTitle = "LabirinthSurvival";
+		windowTitle = "LabyrinthSurvival";
     	windowResizable = GLFW_TRUE;
 		initialBackgroundColor = {0.0f, 0.6f, 0.8f, 1.0f};
 		
@@ -90,7 +99,8 @@ class Assignment08 : public BaseProject {
  								    VK_CULL_MODE_NONE, false);
 
 		// Models, textures and Descriptors (values assigned to the uniforms)
-		const int r = 60, c = 60;
+        int r = NUMROW;
+        int c = NUMCOL;
 		char **maze = genMaze(r, c);
 		
 //std::cout << "Maze Show\n";
@@ -173,7 +183,7 @@ class Assignment08 : public BaseProject {
 	// Very likely this will be where you will be writing the logic of your application.
 	void updateUniformBuffer(uint32_t currentImage) {
 		const float ROT_SPEED = glm::radians(120.0f);
-		const float MOVE_SPEED = 2.0f;
+		const float MOVE_SPEED = 6.0f;
 
 		static float debounce = false;
 		static int curDebounce = 0;
@@ -190,9 +200,28 @@ class Assignment08 : public BaseProject {
 
 		glm::vec3 ux = glm::rotate(glm::mat4(1.0f), CamAlpha, glm::vec3(0,1,0)) * glm::vec4(1,0,0,1);
 		glm::vec3 uz = glm::rotate(glm::mat4(1.0f), CamAlpha, glm::vec3(0,1,0)) * glm::vec4(0,0,-1,1);
+        CamPosPrec = CamPos;
 		CamPos = CamPos + MOVE_SPEED * m.x * ux * deltaT;
 		CamPos = CamPos + MOVE_SPEED * m.y * glm::vec3(0,1,0) * deltaT;
 		CamPos = CamPos + MOVE_SPEED * m.z * uz * deltaT;
+        
+        /*
+        //print CamPos
+        std::cout << CamPos.x;
+        std::cout << " ";
+        std::cout << CamPos.y;
+        std::cout << " ";
+        std::cout << CamPos.z;
+        std::cout << "\n";
+        */
+        
+        //You can't go over a wall
+        if(labyrinthShapeInitialized){
+            const float minDistToWalls = 0.1f;
+            if(labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x-minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x-minDistToWalls)] == true){
+                CamPos = CamPosPrec;
+            }
+        }
 		
 		if(glfwGetKey(window, GLFW_KEY_ESCAPE)) {
 			glfwSetWindowShouldClose(window, GL_TRUE);
@@ -225,12 +254,13 @@ class Assignment08 : public BaseProject {
 	}
 	
 	char **genMaze(int nr, int nc) {
-        // Here the labirinth is randomly generated
+        // Here the labyrinth is randomly generated
         // # Wall
         // P Player
         // K Key
         // D Door
         // B Boss fight
+        // F Food
 		char **out = (char **)calloc(nr, sizeof(char *));
 		for(int i = 0; i < nr; i++) {
 			out[i] = (char *)malloc(nc+1);
@@ -261,7 +291,7 @@ class Assignment08 : public BaseProject {
             out[endXBossFight-1][j] = 'W';
         }
         out[startXBossFight+(xLenghtBossFight/2)][endYBossFight-1] = 'D';//place the door
-		// Select where to dig randomly the labirinth
+		// Select where to dig randomly the labyrinth
         int nEstr = (nr * nc) / 7;
         for(int count = 0; count < nEstr; count++){
             int randX = rand() % nr;
@@ -287,7 +317,7 @@ class Assignment08 : public BaseProject {
             out[0][j] = 'W';
             out[nr-1][j] = 'W';
         }
-        // Dig the labirinth
+        // Dig the labyrinth
         const int maxIteration = 5;
         bool firstIteration = true;
         for(int count = 0; count < maxIteration; count++){//dig roads for some iterations
@@ -441,7 +471,7 @@ class Assignment08 : public BaseProject {
             }
             firstIteration = false;
         }
-        // Adjust labirinth
+        // Adjust labyrinth
         for(int i = 0; i < nr; i++){
             for(int j = 0; j < nc; j++){
                 if(out[i][j] == 'W' || out[i][j] == 't' || out[i][j] == 'c' || out[i][j] == 'T' || out[i][j] == 'C' || out[i][j] == 'L'){
@@ -462,15 +492,22 @@ class Assignment08 : public BaseProject {
         if(cellNum < minCellNum){
             return genMaze(nr, nc);
         }
-        // Locate the palyer and the characters
+        // Locate the palyer, the character and the food
         const int minNumOfKeys = 3;
         const int maxNumOfKeys = 7;
         int varNumOfKeys = maxNumOfKeys - minNumOfKeys;
         int numOfKeys = rand() % varNumOfKeys;
         numOfKeys += minNumOfKeys;
+        const int minNumOfFood = 3;
+        const int maxNumOfFood = 7;
+        int varNumOfFood = maxNumOfFood - minNumOfFood;
+        int numOfFood = rand() % varNumOfFood;
+        numOfFood += minNumOfFood;
         bool playerToBeLocated = true;
-        for(int count = 0; count < numOfKeys + 1; count++){
-            int location = rand() % cellNum;
+        bool foodToBeLocated = true;
+        int cellNumForLocation = cellNum;
+        for(int count = 0; count < numOfKeys + 1 + numOfFood; count++){
+            int location = rand() % cellNumForLocation;
             for(int i = 0; i < nr; i++){
                 for(int j = 0; j < nc; j++){
                     if(out[i][j] == ' '){
@@ -479,13 +516,31 @@ class Assignment08 : public BaseProject {
                             out[i][j] = 'K';
                             if(playerToBeLocated){
                                 out[i][j] = 'P';
+                                CamPos = glm::vec3(j+0.5, 0.5, i+0.5);//set starting position
+                            } else if(foodToBeLocated){
+                                out[i][j] = 'F';
                             }
                         }
                     }
                 }
             }
             playerToBeLocated = false;
+            if(count > numOfFood){
+                foodToBeLocated = false;
+            }
+            cellNumForLocation -= 1;
         }
+        // update labyrinthShape with walls positions
+        for(int i = 0; i < nr; i++){
+            for(int j = 0; j < nc; j++){
+                if(out[i][j] == '#'){
+                    labyrinthShape[i][j] = true;
+                } else {
+                    labyrinthShape[i][j] = false;
+                }
+            }
+        }
+        labyrinthShapeInitialized = true;
         // Return
 		return out;
 	}
@@ -504,7 +559,7 @@ class Assignment08 : public BaseProject {
 
 // This is the main: probably you do not need to touch this!
 int main() {
-    Assignment08 app;
+    LabyrinthSurvival app;
 
     try {
         app.run();
