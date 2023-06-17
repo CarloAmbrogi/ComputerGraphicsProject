@@ -2,7 +2,8 @@
 
 //Positions hight and low floor and ciel
 float puntoBasso = 0.0f;
-float puntoAlto = 3.0f;
+float puntoMuroAlto = 2.0f;
+float puntoAlto = 4.0f;
 
 //Counter creted vertex
 int contatoreVerticiCreati = 0;
@@ -191,7 +192,7 @@ void sequenzaColonne(int i, int j, int row, int col, std::vector<float> &vPos, s
 }
 
 // Draw the labirinth
-void Assignment08::createMazeMesh(int row, int col, char **maze) {
+void LabirinthSurvival::createMazeMesh(int row, int col, char **maze) {
     
     //variable declaration for wall positions
     bool righe[col+1][row];//Wall at shape |
@@ -387,10 +388,10 @@ void Assignment08::createMazeMesh(int row, int col, char **maze) {
     
     //Add the ciel
     contatoreVerticiCreati += 4;
-    vPos.push_back(0.0f); vPos.push_back(puntoAlto); vPos.push_back(0.0f);
-    vPos.push_back(col); vPos.push_back(puntoAlto); vPos.push_back(0.0f);
-    vPos.push_back(0.0f); vPos.push_back(puntoAlto); vPos.push_back(row);
-    vPos.push_back(col); vPos.push_back(puntoAlto); vPos.push_back(row);
+    vPos.push_back(0.0f); vPos.push_back(puntoMuroAlto); vPos.push_back(0.0f);
+    vPos.push_back(col); vPos.push_back(puntoMuroAlto); vPos.push_back(0.0f);
+    vPos.push_back(0.0f); vPos.push_back(puntoMuroAlto); vPos.push_back(row);
+    vPos.push_back(col); vPos.push_back(puntoMuroAlto); vPos.push_back(row);
     vIdx.push_back(contatoreVerticiCreati-4); vIdx.push_back(contatoreVerticiCreati-3); vIdx.push_back(contatoreVerticiCreati-2);
     vIdx.push_back(contatoreVerticiCreati-3); vIdx.push_back(contatoreVerticiCreati-2); vIdx.push_back(contatoreVerticiCreati-1);
     

@@ -16,10 +16,10 @@ struct GlobalUniformBufferObject {
 	alignas(16) glm::vec3 eyePos;
 };
 
-class Assignment08;
+class LabirinthSurvival;
 
 // MAIN ! 
-class Assignment08 : public BaseProject {
+class LabirinthSurvival : public BaseProject {
 	protected:
 	// Here you list all the Vulkan objects you need:
 	
@@ -173,7 +173,7 @@ class Assignment08 : public BaseProject {
 	// Very likely this will be where you will be writing the logic of your application.
 	void updateUniformBuffer(uint32_t currentImage) {
 		const float ROT_SPEED = glm::radians(120.0f);
-		const float MOVE_SPEED = 2.0f;
+		const float MOVE_SPEED = 8.0f;
 
 		static float debounce = false;
 		static int curDebounce = 0;
@@ -231,6 +231,7 @@ class Assignment08 : public BaseProject {
         // K Key
         // D Door
         // B Boss fight
+        // F Food
 		char **out = (char **)calloc(nr, sizeof(char *));
 		for(int i = 0; i < nr; i++) {
 			out[i] = (char *)malloc(nc+1);
@@ -462,15 +463,22 @@ class Assignment08 : public BaseProject {
         if(cellNum < minCellNum){
             return genMaze(nr, nc);
         }
-        // Locate the palyer and the characters
+        // Locate the palyer, the character and the food
         const int minNumOfKeys = 3;
         const int maxNumOfKeys = 7;
         int varNumOfKeys = maxNumOfKeys - minNumOfKeys;
         int numOfKeys = rand() % varNumOfKeys;
         numOfKeys += minNumOfKeys;
+        const int minNumOfFood = 3;
+        const int maxNumOfFood = 7;
+        int varNumOfFood = maxNumOfFood - minNumOfFood;
+        int numOfFood = rand() % varNumOfFood;
+        numOfFood += minNumOfFood;
         bool playerToBeLocated = true;
-        for(int count = 0; count < numOfKeys + 1; count++){
-            int location = rand() % cellNum;
+        bool foodToBeLocated = true;
+        int cellNumForLocation = cellNum;
+        for(int count = 0; count < numOfKeys + 1 + numOfFood; count++){
+            int location = rand() % cellNumForLocation;
             for(int i = 0; i < nr; i++){
                 for(int j = 0; j < nc; j++){
                     if(out[i][j] == ' '){
@@ -479,12 +487,19 @@ class Assignment08 : public BaseProject {
                             out[i][j] = 'K';
                             if(playerToBeLocated){
                                 out[i][j] = 'P';
+                                CamPos = glm::vec3(j+0.5, 0.5, i+0.5);//set starting position
+                            } else if(foodToBeLocated){
+                                out[i][j] = 'F';
                             }
                         }
                     }
                 }
             }
             playerToBeLocated = false;
+            if(count > numOfFood){
+                foodToBeLocated = false;
+            }
+            cellNumForLocation -= 1;
         }
         // Return
 		return out;
@@ -504,7 +519,7 @@ class Assignment08 : public BaseProject {
 
 // This is the main: probably you do not need to touch this!
 int main() {
-    Assignment08 app;
+    LabirinthSurvival app;
 
     try {
         app.run();
