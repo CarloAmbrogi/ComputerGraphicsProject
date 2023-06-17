@@ -191,8 +191,8 @@ void sequenzaColonne(int i, int j, int row, int col, std::vector<float> &vPos, s
     return;
 }
 
-// Draw the labirinth
-void LabirinthSurvival::createMazeMesh(int row, int col, char **maze) {
+// Draw the labyrinth
+void LabyrinthSurvival::createMazeMesh(int row, int col, char **maze) {
     
     //variable declaration for wall positions
     bool righe[col+1][row];//Wall at shape |
@@ -273,7 +273,7 @@ void LabirinthSurvival::createMazeMesh(int row, int col, char **maze) {
     std::cout << "\n";
     */
     
-    //Let's see the labirinth
+    //Let's see the labyrinth
     int vLrow = row*2+1;
     int vLcol = col*2+1;
     bool vediamoLabirinto[vLrow][vLcol];
