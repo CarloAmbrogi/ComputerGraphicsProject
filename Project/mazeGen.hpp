@@ -1,190 +1,199 @@
 #define BIGNUM 99
 
 //Positions hight and low floor and ciel
-float puntoBasso = 0.0f;
-float puntoMuroAlto = 2.0f;
-float puntoAlto = 4.0f;
+float downPoint = 0.0f;
+float upWallPoint = 2.0f;
+float upPoint = 4.0f;
 
 //Counter creted vertex
-int contatoreVerticiCreati = 0;
+int counterCreatedVertex = 0;
 
-bool righeDT[BIGNUM][BIGNUM];
-bool colonneDT[BIGNUM][BIGNUM];
+//Vars used when draving the labyrinth; | or - shaped walls to be drawn
+bool rowsToDraw[BIGNUM][BIGNUM];
+bool colsToDraw[BIGNUM][BIGNUM];
 
-void sequenzaColonne(int i, int j, int row, int col, std::vector<float> &vPos, std::vector<int> &vIdx, bool conservaVertici, bool proponiDirezioneCrescente);
+void colsSequence(int i, int j, int row, int col, std::vector<float> &vPos, std::vector<int> &vIdx, bool keepVertex, bool proposeGrowingDirection);
 
-void sequenzaRighe(int i, int j, int row, int col, std::vector<float> &vPos, std::vector<int> &vIdx, bool conservaVertici, bool proponiDirezioneCrescente){
-    //Delete the specific wall |
-    int colonnaNumero = i;
-    int iniziale = j;
-    bool direzioneCrescente = true;
-    if(iniziale > 0){
-        if(righeDT[colonnaNumero][iniziale-1] == true){
-            direzioneCrescente = false;
+//Draw the wall following the perimeter; starting with a | wall
+void rowsSequence(int i, int j, int row, int col, std::vector<float> &vPos, std::vector<int> &vIdx, bool keepVertex, bool proposeGrowingDirection){
+    //Find the place to start drawing the wall
+    int colNumber = i;
+    int starting = j;
+    bool growingDirection = true;//Find also in witch direction to draw the wall
+    if(starting > 0){
+        if(rowsToDraw[colNumber][starting-1] == true){
+            growingDirection = false;
         }
     }
-    int finale = iniziale;
-    bool stoAncoraCercandoLaPosFinale = true;
-    while(stoAncoraCercandoLaPosFinale == true){
-        int provaNuovoFinale = finale;
-        if(direzioneCrescente == true){
-            provaNuovoFinale += 1;
+    int ending = starting;
+    bool iMStillLookingForTheFinalPosition = true;
+    while(iMStillLookingForTheFinalPosition == true){//Find the final position to complete drawing the wall
+        int tryNewFinal = ending;
+        if(growingDirection == true){
+            tryNewFinal += 1;
         } else {
-            provaNuovoFinale -= 1;
+            tryNewFinal -= 1;
         }
-        if(provaNuovoFinale < 0 || provaNuovoFinale > row){
-            stoAncoraCercandoLaPosFinale = false;
+        if(tryNewFinal < 0 || tryNewFinal > row){
+            iMStillLookingForTheFinalPosition = false;
         } else {
-            if(righeDT[colonnaNumero][provaNuovoFinale] == false){
-                stoAncoraCercandoLaPosFinale = false;
+            if(rowsToDraw[colNumber][tryNewFinal] == false){
+                iMStillLookingForTheFinalPosition = false;
             }
         }
-        if(stoAncoraCercandoLaPosFinale == true){
-            finale = provaNuovoFinale;
+        if(iMStillLookingForTheFinalPosition == true){
+            ending = tryNewFinal;
         }
     }
-    if(iniziale == finale){
-        direzioneCrescente = proponiDirezioneCrescente;
+    if(starting == ending){
+        growingDirection = proposeGrowingDirection;
     }
-    if(finale >= iniziale){
-        for(int k = iniziale; k <= finale; k++){
-            righeDT[colonnaNumero][k] = false;
+    //You are gonig to draw the wall, so here we take note we won't have to draw it again
+    if(ending >= starting){
+        for(int k = starting; k <= ending; k++){
+            rowsToDraw[colNumber][k] = false;
         }
     } else {
-        for(int k = iniziale; k >= finale; k--){
-            righeDT[colonnaNumero][k] = false;
+        for(int k = starting; k >= ending; k--){
+            rowsToDraw[colNumber][k] = false;
         }
     }
-    int puntoIniziale = iniziale;
-    int puntoFinale = finale + 1;
-    if(direzioneCrescente == false){
-        puntoIniziale = iniziale + 1;
-        puntoFinale = finale;
+    //Adjust initial and final points
+    int startingPoint = starting;
+    int finalPoint = ending + 1;
+    if(growingDirection == false){
+        startingPoint = starting + 1;
+        finalPoint = ending;
     }
-    contatoreVerticiCreati += 4;
-    if(conservaVertici == true){
-        contatoreVerticiCreati -= 2;
+    //Draw really the wall
+    counterCreatedVertex += 4;
+    if(keepVertex == true){
+        counterCreatedVertex -= 2;
     }
-    if(conservaVertici == false){
-        vPos.push_back(colonnaNumero); vPos.push_back(puntoBasso); vPos.push_back(puntoIniziale);
-        vPos.push_back(colonnaNumero); vPos.push_back(puntoAlto); vPos.push_back(puntoIniziale);
+    if(keepVertex == false){
+        vPos.push_back(colNumber); vPos.push_back(downPoint); vPos.push_back(startingPoint);
+        vPos.push_back(colNumber); vPos.push_back(upPoint); vPos.push_back(startingPoint);
     }
-    vPos.push_back(colonnaNumero); vPos.push_back(puntoBasso); vPos.push_back(puntoFinale);
-    vPos.push_back(colonnaNumero); vPos.push_back(puntoAlto); vPos.push_back(puntoFinale);
-    vIdx.push_back(contatoreVerticiCreati-4); vIdx.push_back(contatoreVerticiCreati-3); vIdx.push_back(contatoreVerticiCreati-2);
-    vIdx.push_back(contatoreVerticiCreati-3); vIdx.push_back(contatoreVerticiCreati-2); vIdx.push_back(contatoreVerticiCreati-1);
-    //Cerco un consecutivo muro -
-    int guardoRigaNumero = finale + 1;
-    if(direzioneCrescente == false){
-        guardoRigaNumero = finale;
+    vPos.push_back(colNumber); vPos.push_back(downPoint); vPos.push_back(finalPoint);
+    vPos.push_back(colNumber); vPos.push_back(upPoint); vPos.push_back(finalPoint);
+    vIdx.push_back(counterCreatedVertex-4); vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2);
+    vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2); vIdx.push_back(counterCreatedVertex-1);
+    //Find a next consecutive wall -
+    int guardorowNumber = ending + 1;
+    if(growingDirection == false){
+        guardorowNumber = ending;
     }
-    if(colonnaNumero > 0 && colonnaNumero <= col){
-        if(colonneDT[guardoRigaNumero][colonnaNumero-1] == true && colonneDT[guardoRigaNumero][colonnaNumero] == false){
-            sequenzaColonne(guardoRigaNumero,colonnaNumero-1,row,col,vPos,vIdx, true, false);
+    if(colNumber > 0 && colNumber <= col){
+        if(colsToDraw[guardorowNumber][colNumber-1] == true && colsToDraw[guardorowNumber][colNumber] == false){
+            colsSequence(guardorowNumber,colNumber-1,row,col,vPos,vIdx, true, false);
             return;
-        } else if(colonneDT[guardoRigaNumero][colonnaNumero-1] == false && colonneDT[guardoRigaNumero][colonnaNumero] == true){
-            sequenzaColonne(guardoRigaNumero,colonnaNumero,row,col,vPos,vIdx, true, true);
-            return;
-        }
-    }
-    if(colonnaNumero == 0){
-        if(colonneDT[guardoRigaNumero][colonnaNumero] == true){
-            sequenzaColonne(guardoRigaNumero,colonnaNumero,row,col,vPos,vIdx, true, true);
+        } else if(colsToDraw[guardorowNumber][colNumber-1] == false && colsToDraw[guardorowNumber][colNumber] == true){
+            colsSequence(guardorowNumber,colNumber,row,col,vPos,vIdx, true, true);
             return;
         }
     }
-    if(colonnaNumero == col+1){
-        if(colonneDT[guardoRigaNumero][colonnaNumero-1] == true){
-            sequenzaColonne(guardoRigaNumero,colonnaNumero-1,row,col,vPos,vIdx, true, false);
+    if(colNumber == 0){
+        if(colsToDraw[guardorowNumber][colNumber] == true){
+            colsSequence(guardorowNumber,colNumber,row,col,vPos,vIdx, true, true);
+            return;
+        }
+    }
+    if(colNumber == col+1){
+        if(colsToDraw[guardorowNumber][colNumber-1] == true){
+            colsSequence(guardorowNumber,colNumber-1,row,col,vPos,vIdx, true, false);
             return;
         }
     }
     return;
 }
 
-void sequenzaColonne(int i, int j, int row, int col, std::vector<float> &vPos, std::vector<int> &vIdx, bool conservaVertici, bool proponiDirezioneCrescente){
-    //Elimino lo specifico muro -
-    int rigaNumero = i;
-    int iniziale = j;
-    bool direzioneCrescente = true;
-    if(iniziale > 0){
-        if(colonneDT[rigaNumero][iniziale-1] == true){
-            direzioneCrescente = false;
+//Draw the wall following the perimeter; starting with a - wall
+void colsSequence(int i, int j, int row, int col, std::vector<float> &vPos, std::vector<int> &vIdx, bool keepVertex, bool proposeGrowingDirection){
+    //Find the place to start drawing the wall
+    int rowNumber = i;
+    int starting = j;
+    bool growingDirection = true;//Find also in witch direction to draw the wall
+    if(starting > 0){
+        if(colsToDraw[rowNumber][starting-1] == true){
+            growingDirection = false;
         }
     }
-    int finale = iniziale;
-    bool stoAncoraCercandoLaPosFinale = true;
-    while(stoAncoraCercandoLaPosFinale == true){
-        int provaNuovoFinale = finale;
-        if(direzioneCrescente == true){
-            provaNuovoFinale += 1;
+    int ending = starting;
+    bool iMStillLookingForTheFinalPosition = true;
+    while(iMStillLookingForTheFinalPosition == true){//Find the final position to complete drawing the wall
+        int tryNewFinal = ending;
+        if(growingDirection == true){
+            tryNewFinal += 1;
         } else {
-            provaNuovoFinale -= 1;
+            tryNewFinal -= 1;
         }
-        if(provaNuovoFinale < 0 || provaNuovoFinale > col){
-            stoAncoraCercandoLaPosFinale = false;
+        if(tryNewFinal < 0 || tryNewFinal > col){
+            iMStillLookingForTheFinalPosition = false;
         } else {
-            if(colonneDT[rigaNumero][provaNuovoFinale] == false){
-                stoAncoraCercandoLaPosFinale = false;
+            if(colsToDraw[rowNumber][tryNewFinal] == false){
+                iMStillLookingForTheFinalPosition = false;
             }
         }
-        if(stoAncoraCercandoLaPosFinale == true){
-            finale = provaNuovoFinale;
+        if(iMStillLookingForTheFinalPosition == true){
+            ending = tryNewFinal;
         }
     }
-    if(iniziale == finale){
-        direzioneCrescente = proponiDirezioneCrescente;
+    if(starting == ending){
+        growingDirection = proposeGrowingDirection;
     }
-    if(finale >= iniziale){
-        for(int k = iniziale; k <= finale; k++){
-            colonneDT[rigaNumero][k] = false;
+    //You are gonig to draw the wall, so here we take note we won't have to draw it again
+    if(ending >= starting){
+        for(int k = starting; k <= ending; k++){
+            colsToDraw[rowNumber][k] = false;
         }
     } else {
-        for(int k = iniziale; k >= finale; k--){
-            colonneDT[rigaNumero][k] = false;
+        for(int k = starting; k >= ending; k--){
+            colsToDraw[rowNumber][k] = false;
         }
     }
-    int puntoIniziale = iniziale;
-    int puntoFinale = finale + 1;
-    if(direzioneCrescente == false){
-        puntoIniziale = iniziale + 1;
-        puntoFinale = finale;
+    //Adjust initial and final points
+    int startingPoint = starting;
+    int finalPoint = ending + 1;
+    if(growingDirection == false){
+        startingPoint = starting + 1;
+        finalPoint = ending;
     }
-    contatoreVerticiCreati += 4;
-    if(conservaVertici == true){
-        contatoreVerticiCreati -= 2;
+    //Draw really the wall
+    counterCreatedVertex += 4;
+    if(keepVertex == true){
+        counterCreatedVertex -= 2;
     }
-    if(conservaVertici == false){
-        vPos.push_back(puntoIniziale); vPos.push_back(puntoBasso); vPos.push_back(rigaNumero);
-        vPos.push_back(puntoIniziale); vPos.push_back(puntoAlto); vPos.push_back(rigaNumero);
+    if(keepVertex == false){
+        vPos.push_back(startingPoint); vPos.push_back(downPoint); vPos.push_back(rowNumber);
+        vPos.push_back(startingPoint); vPos.push_back(upPoint); vPos.push_back(rowNumber);
     }
-    vPos.push_back(puntoFinale); vPos.push_back(puntoBasso); vPos.push_back(rigaNumero);
-    vPos.push_back(puntoFinale); vPos.push_back(puntoAlto); vPos.push_back(rigaNumero);
-    vIdx.push_back(contatoreVerticiCreati-4); vIdx.push_back(contatoreVerticiCreati-3); vIdx.push_back(contatoreVerticiCreati-2);
-    vIdx.push_back(contatoreVerticiCreati-3); vIdx.push_back(contatoreVerticiCreati-2); vIdx.push_back(contatoreVerticiCreati-1);
-    //Cerco un consecutivo muro |
-    int guardoColonnaNumero = finale + 1;
-    if(direzioneCrescente == false){
-        guardoColonnaNumero = finale;
+    vPos.push_back(finalPoint); vPos.push_back(downPoint); vPos.push_back(rowNumber);
+    vPos.push_back(finalPoint); vPos.push_back(upPoint); vPos.push_back(rowNumber);
+    vIdx.push_back(counterCreatedVertex-4); vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2);
+    vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2); vIdx.push_back(counterCreatedVertex-1);
+    //Find a next consecutive wall |
+    int guardocolNumber = ending + 1;
+    if(growingDirection == false){
+        guardocolNumber = ending;
     }
-    if(rigaNumero > 0 && rigaNumero <= row){
-        if(righeDT[guardoColonnaNumero][rigaNumero-1] == true && righeDT[guardoColonnaNumero][rigaNumero] == false){
-            sequenzaRighe(guardoColonnaNumero,rigaNumero-1,row,col,vPos,vIdx, true, false);
+    if(rowNumber > 0 && rowNumber <= row){
+        if(rowsToDraw[guardocolNumber][rowNumber-1] == true && rowsToDraw[guardocolNumber][rowNumber] == false){
+            rowsSequence(guardocolNumber,rowNumber-1,row,col,vPos,vIdx, true, false);
             return;
-        } else if(righeDT[guardoColonnaNumero][rigaNumero-1] == false && righeDT[guardoColonnaNumero][rigaNumero] == true){
-            sequenzaRighe(guardoColonnaNumero,rigaNumero,row,col,vPos,vIdx, true, true);
-            return;
-        }
-    }
-    if(rigaNumero == 0){
-        if(righeDT[guardoColonnaNumero][rigaNumero] == true){
-            sequenzaRighe(guardoColonnaNumero,rigaNumero,row,col,vPos,vIdx, true, true);
+        } else if(rowsToDraw[guardocolNumber][rowNumber-1] == false && rowsToDraw[guardocolNumber][rowNumber] == true){
+            rowsSequence(guardocolNumber,rowNumber,row,col,vPos,vIdx, true, true);
             return;
         }
     }
-    if(rigaNumero == col+1){
-        if(righeDT[guardoColonnaNumero][rigaNumero-1] == true){
-            sequenzaRighe(guardoColonnaNumero,rigaNumero-1,row,col,vPos,vIdx, true, false);
+    if(rowNumber == 0){
+        if(rowsToDraw[guardocolNumber][rowNumber] == true){
+            rowsSequence(guardocolNumber,rowNumber,row,col,vPos,vIdx, true, true);
+            return;
+        }
+    }
+    if(rowNumber == col+1){
+        if(rowsToDraw[guardocolNumber][rowNumber-1] == true){
+            rowsSequence(guardocolNumber,rowNumber-1,row,col,vPos,vIdx, true, false);
             return;
         }
     }
@@ -195,63 +204,61 @@ void sequenzaColonne(int i, int j, int row, int col, std::vector<float> &vPos, s
 void LabyrinthSurvival::createMazeMesh(int row, int col, char **maze) {
     
     //variable declaration for wall positions
-    bool righe[col+1][row];//Wall at shape |
-    bool colonne[row+1][col];//Wall at shape -
+    bool rows[col+1][row];//Wall at shape |
+    bool cols[row+1][col];//Wall at shape -
     for(int i = 0; i < col+1; i++){
         for(int j = 0; j < row; j++){
-            righe[i][j] = false;
+            rows[i][j] = false;
         }
     }
     for(int i = 0; i < row+1; i++){
         for(int j = 0; j < col; j++){
-            colonne[i][j] = false;
+            cols[i][j] = false;
         }
     }
-    
-    // TODO: Spiegas questa cosa - aggiungi qualche commento - refector delle variabili in inglese
-    
+        
     //fix wall var to memorize wall's presence
     for(int i = 0; i < row; i++){
         for(int j = 0; j < col; j++){
             if(maze[i][j] == '#'){
                 if(j-1 >= 0){
                     if(maze[i][j-1] != '#'){
-                        righe[j][i] = true;//wall in left
+                        rows[j][i] = true;//wall in left
                     }
                 } else {
-                    righe[j][i] = true;//wall in left
+                    rows[j][i] = true;//wall in left
                 }
                 if(j+1 < col){
                     if(maze[i][j+1] != '#'){
-                        righe[j+1][i] = true;//wall in right
+                        rows[j+1][i] = true;//wall in right
                     }
                 } else {
-                    righe[j+1][i] = true;//wall in right
+                    rows[j+1][i] = true;//wall in right
                 }
                 if(i-1 >= 0){
                     if(maze[i-1][j] != '#'){
-                        colonne[i][j] = true;//wall in forward
+                        cols[i][j] = true;//wall in forward
                     }
                 } else {
-                    colonne[i][j] = true;//wall in forward
+                    cols[i][j] = true;//wall in forward
                 }
                 if(i+1 < row){
                     if(maze[i+1][j] != '#'){
-                        colonne[i+1][j] = true;//wall in backward
+                        cols[i+1][j] = true;//wall in backward
                     }
                 } else {
-                    colonne[i+1][j] = true;//wall in backward
+                    cols[i+1][j] = true;//wall in backward
                 }
             }
         }
     }
     
     /*
-    //Vediamo i muri
+    //Let's see the walls
     std::cout << "\n";
     for(int j = 0; j < row; j++){
         for(int i = 0; i < col+1; i++){
-            if(righe[i][j] == true){
+            if(rows[i][j] == true){
                 std::cout << "1";
             } else {
                 std::cout << "0";
@@ -262,7 +269,7 @@ void LabyrinthSurvival::createMazeMesh(int row, int col, char **maze) {
     std::cout << "\n";
     for(int i = 0; i < row+1; i++){
         for(int j = 0; j < col; j++){
-            if(colonne[i][j] == true){
+            if(cols[i][j] == true){
                 std::cout << "1";
             } else {
                 std::cout << "0";
@@ -273,36 +280,36 @@ void LabyrinthSurvival::createMazeMesh(int row, int col, char **maze) {
     std::cout << "\n";
     */
     
+    /*
     //Let's see the labyrinth
     int vLrow = row*2+1;
     int vLcol = col*2+1;
-    bool vediamoLabirinto[vLrow][vLcol];
+    bool letSSeeTheLabyrinth[vLrow][vLcol];//this var used just for debug to see visually the labyrinth
     for(int i = 0; i < vLrow; i++){
         for(int j = 0; j < vLcol; j++){
-            vediamoLabirinto[i][j] = false;
+            letSSeeTheLabyrinth[i][j] = false;
             if(i%2 == 0 && j%2 == 0){
-                vediamoLabirinto[i][j] = true;
+                letSSeeTheLabyrinth[i][j] = true;
             }
         }
     }
     for(int i = 0; i < col + 1; i++){
         for(int j = 0; j < row; j++){
-            if(righe[i][j] == true){
-                vediamoLabirinto[j*2+1][i*2] = true;
+            if(rows[i][j] == true){
+                letSSeeTheLabyrinth[j*2+1][i*2] = true;
             }
         }
     }
     for(int i = 0; i < row + 1; i++){
         for(int j = 0; j < col; j++){
-            if(colonne[i][j] == true){
-                vediamoLabirinto[i*2][j*2+1] = true;
+            if(cols[i][j] == true){
+                letSSeeTheLabyrinth[i*2][j*2+1] = true;
             }
         }
     }
-    /*
     for(int i = 0; i < vLrow; i++){
         for(int j = 0; j < vLcol; j++){
-            if(vediamoLabirinto[i][j] == true){
+            if(letSSeeTheLabyrinth[i][j] == true){
                 std::cout << "X";
             } else {
                 std::cout << " ";
@@ -313,62 +320,58 @@ void LabyrinthSurvival::createMazeMesh(int row, int col, char **maze) {
     std::cout << "\n";
     */
     
-    //which walls I have to draw, copy them in righeDT and colonneDT vars
-    //bool righeDT[col+1][row];//Muri a forma di | // diventata var globale
-    //bool colonneDT[row+1][col];//Muri a forma di - // diventata var globale
+    //which walls I have to draw, copy them in rowsToDraw (| walls) and colsToDraw (- walls) vars
     for(int i = 0; i < col+1; i++){
         for(int j = 0; j < row; j++){
-            righeDT[i][j] = righe[i][j];
+            rowsToDraw[i][j] = rows[i][j];
         }
     }
     for(int i = 0; i < row+1; i++){
         for(int j = 0; j < col; j++){
-            colonneDT[i][j] = colonne[i][j];
+            colsToDraw[i][j] = cols[i][j];
         }
     }
     
-    //Loop to run qwhen there are walls to draw
-    bool ciSonoAncoraMuriDaTracciare = true;
-    while(ciSonoAncoraMuriDaTracciare){
+    //Loop to run when there are walls to draw
+    bool areThereAnyWallToDraw = true;
+    while(areThereAnyWallToDraw){
         //check if any walls to draw already
-        ciSonoAncoraMuriDaTracciare = false;
-        for(int i = 0; i < col+1; i++){
+        areThereAnyWallToDraw = false;
+        for(int i = 0; i < col+1; i++){//Check if any | wall to draw
             for(int j = 0; j < row; j++){
-                if(righeDT[i][j] == true){
-                    ciSonoAncoraMuriDaTracciare = true;
+                if(rowsToDraw[i][j] == true){
+                    areThereAnyWallToDraw = true;
                 }
             }
         }
         /*
-        for(int i = 0; i < row+1; i++){
+        //This part of code is optional because, starting by drawing a | wall, we will follow the perimeter drawing also all - wall
+        for(int i = 0; i < row+1; i++){//Check if any - wall to draw
             for(int j = 0; j < col; j++){
-                if(colonneDT[i][j] == true){
-                    //ciSonoAncoraMuriDaTracciare = true;//
+                if(colsToDraw[i][j] == true){
+                    //areThereAnyWallToDraw = true;//
                 }
             }
         }
         */
-        if(ciSonoAncoraMuriDaTracciare == true){
-            //START Here there are walls to draw
+        if(areThereAnyWallToDraw == true){
+            //START Here there are walls to be draw
             
-            //ricerca sequenza di muri iniziante con un muro |
+            //Search a wall sequence starting with a | wall
             for(int i = 0; i < col+1; i++){
                 for(int j = 0; j < row; j++){
-                    if(righeDT[i][j] == true){
-                        //INIZIA sequenza righe da toglere | partendo da righeDT[i][j]
-                        sequenzaRighe(i,j,row,col,vPos,vIdx, false, true);
-                        //FINE sequenza righe da toglere | partendo da righeDT[i][j]
+                    if(rowsToDraw[i][j] == true){
+                        rowsSequence(i,j,row,col,vPos,vIdx, false, true);//Draw a wall sequence starting with this | wall
                     }
                 }
             }
             /*
-            //ricerca sequenza di muri iniziante con un muro -
+            //Search a wall sequence starting with a - wall
+            //This part of code is optional because, starting by drawing a | wall, we will follow the perimeter drawing also all - wall
             for(int i = 0; i < row+1; i++){
                 for(int j = 0; j < col; j++){
-                    if(colonneDT[i][j] == true){
-                        //INIZIA sequenza colonne da toglere | partendo da colonneDT[i][j]
-                        sequenzaColonne(i,j,row,col,vPos,vIdx, false, true);
-                        //FINE sequenza colonne da toglere | partendo da colonneDT[i][j]
+                    if(colsToDraw[i][j] == true){
+                        colsSequence(i,j,row,col,vPos,vIdx, false, true);//Draw a wall sequence starting with this - wall
                     }
                 }
             }
@@ -377,22 +380,22 @@ void LabyrinthSurvival::createMazeMesh(int row, int col, char **maze) {
         }
     }
     
-    //Add the wall
-    contatoreVerticiCreati += 4;
-    vPos.push_back(0.0f); vPos.push_back(puntoBasso); vPos.push_back(0.0f);
-    vPos.push_back(col); vPos.push_back(puntoBasso); vPos.push_back(0.0f);
-    vPos.push_back(0.0f); vPos.push_back(puntoBasso); vPos.push_back(row);
-    vPos.push_back(col); vPos.push_back(puntoBasso); vPos.push_back(row);
-    vIdx.push_back(contatoreVerticiCreati-4); vIdx.push_back(contatoreVerticiCreati-3); vIdx.push_back(contatoreVerticiCreati-2);
-    vIdx.push_back(contatoreVerticiCreati-3); vIdx.push_back(contatoreVerticiCreati-2); vIdx.push_back(contatoreVerticiCreati-1);
+    //Add the floor
+    counterCreatedVertex += 4;
+    vPos.push_back(0.0f); vPos.push_back(downPoint); vPos.push_back(0.0f);
+    vPos.push_back(col); vPos.push_back(downPoint); vPos.push_back(0.0f);
+    vPos.push_back(0.0f); vPos.push_back(downPoint); vPos.push_back(row);
+    vPos.push_back(col); vPos.push_back(downPoint); vPos.push_back(row);
+    vIdx.push_back(counterCreatedVertex-4); vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2);
+    vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2); vIdx.push_back(counterCreatedVertex-1);
     
     //Add the ciel
-    contatoreVerticiCreati += 4;
-    vPos.push_back(0.0f); vPos.push_back(puntoMuroAlto); vPos.push_back(0.0f);
-    vPos.push_back(col); vPos.push_back(puntoMuroAlto); vPos.push_back(0.0f);
-    vPos.push_back(0.0f); vPos.push_back(puntoMuroAlto); vPos.push_back(row);
-    vPos.push_back(col); vPos.push_back(puntoMuroAlto); vPos.push_back(row);
-    vIdx.push_back(contatoreVerticiCreati-4); vIdx.push_back(contatoreVerticiCreati-3); vIdx.push_back(contatoreVerticiCreati-2);
-    vIdx.push_back(contatoreVerticiCreati-3); vIdx.push_back(contatoreVerticiCreati-2); vIdx.push_back(contatoreVerticiCreati-1);
+    counterCreatedVertex += 4;
+    vPos.push_back(0.0f); vPos.push_back(upWallPoint); vPos.push_back(0.0f);
+    vPos.push_back(col); vPos.push_back(upWallPoint); vPos.push_back(0.0f);
+    vPos.push_back(0.0f); vPos.push_back(upWallPoint); vPos.push_back(row);
+    vPos.push_back(col); vPos.push_back(upWallPoint); vPos.push_back(row);
+    vIdx.push_back(counterCreatedVertex-4); vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2);
+    vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2); vIdx.push_back(counterCreatedVertex-1);
     
 }

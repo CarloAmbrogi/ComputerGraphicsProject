@@ -1,6 +1,9 @@
-// This has been adapted from the Vulkan tutorial
-
 #include "Starter.hpp"
+#include "TextMaker.hpp"
+
+std::vector<SingleText> demoText = {
+   {1, {"Testo di prova", "", "", ""}, 0, 0},
+};
 
 
 // num rows and cols labyrinth
@@ -37,6 +40,8 @@ class LabyrinthSurvival : public BaseProject {
 	// Models, textures and Descriptors (values assigned to the uniforms)
 	Model M{};
 	DescriptorSet DS;
+    
+    TextMaker txt;//To insert a text with the number of life
     
     bool labyrinthShape[NUMROW][NUMCOL];//to keep where there is a wall in the labyrinth
     bool labyrinthShapeInitialized = false;//if the labyrinth is initialized
@@ -136,6 +141,8 @@ class LabyrinthSurvival : public BaseProject {
 		std::cout << "Created model: V=" << M.vertices.size() << ", I=" << M.indices.size() << "\n";
 
 		destroyMaze(r, c, maze);
+        
+        //txt.init(this, &demoText);//BHOTESTO
 	}
 	
 	// Here you create your pipelines and Descriptor Sets!
@@ -147,6 +154,10 @@ class LabyrinthSurvival : public BaseProject {
 					{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
 					{1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
 				});
+        
+        //std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n";
+        //txt.pipelinesAndDescriptorSetsInit();//BHOTESTO
+        //std::cout << "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\n";
 	}
 
 	// Here you destroy your pipelines and Descriptor Sets!
@@ -154,6 +165,8 @@ class LabyrinthSurvival : public BaseProject {
 		P1.cleanup();
 		
 		DS.cleanup();
+        
+        //txt.pipelinesAndDescriptorSetsCleanup();//BHOTESTO
 	}
 
 	// Here you destroy all the Models, Texture and Desc. Set Layouts you created!
@@ -163,7 +176,9 @@ class LabyrinthSurvival : public BaseProject {
 
 		DSL1.cleanup();
 		
-		P1.destroy();		
+		P1.destroy();
+        
+        //txt.localCleanup();//BHOTESTO
 	}
 	
 	// Here it is the creation of the command buffer:
@@ -177,6 +192,8 @@ class LabyrinthSurvival : public BaseProject {
 					
 		vkCmdDrawIndexed(commandBuffer,
 				static_cast<uint32_t>(M.indices.size()), 1, 0, 0, 0);
+        
+        //txt.populateCommandBuffer(commandBuffer, currentImage, 0);//BHOTESTO
 	}
 
 	// Here is where you update the uniforms.
@@ -212,14 +229,50 @@ class LabyrinthSurvival : public BaseProject {
         std::cout << CamPos.y;
         std::cout << " ";
         std::cout << CamPos.z;
+        std::cout << " ";
+        std::cout << CamAlpha;
         std::cout << "\n";
         */
         
         //You can't go over a wall
         if(labyrinthShapeInitialized){
-            const float minDistToWalls = 0.1f;
+            const float minDistToWalls = 0.15f;
+            //you can't pass through a wall
             if(labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x-minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x-minDistToWalls)] == true){
-                CamPos = CamPosPrec;
+                CamPos = CamPosPrec;//return to the previous position
+                //go on even if you are lightly passing through walls
+                float pih = 3.14159265358979f / 2.0f;//there are 4 possible direction the walls are oriented
+                //find the residue value to the nearest direction of the 4 possible you are going
+                int resultDiv = CamAlpha / pih;
+                float resDivVal = resultDiv * ((float)pih);
+                float residue = CamAlpha - resDivVal;
+                if(residue < 0){
+                    residue = residue + pih;
+                    resDivVal = resDivVal - pih;
+                }
+                float tolleranceDivider = 3.0f;
+                float CamAlphaPrec = CamAlpha;
+                bool adjustLightlyPassingThroughWalls = false;
+                //if you are lightly passing through a wall, the correct direction is temporanely recovered to let you go on
+                if(residue < pih / tolleranceDivider){
+                    CamAlpha = resDivVal;
+                    adjustLightlyPassingThroughWalls = true;
+                } else if(residue > pih - (pih / tolleranceDivider)){
+                    CamAlpha = resDivVal + pih;
+                    adjustLightlyPassingThroughWalls = true;
+                }
+                if(adjustLightlyPassingThroughWalls == true){
+                    //go on
+                    ux = glm::rotate(glm::mat4(1.0f), CamAlpha, glm::vec3(0,1,0)) * glm::vec4(1,0,0,1);
+                    uz = glm::rotate(glm::mat4(1.0f), CamAlpha, glm::vec3(0,1,0)) * glm::vec4(0,0,-1,1);
+                    CamPosPrec = CamPos;
+                    CamPos = CamPos + MOVE_SPEED * m.x * ux * deltaT;
+                    CamPos = CamPos + MOVE_SPEED * m.z * uz * deltaT;
+                    if(labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x-minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x-minDistToWalls)] == true){
+                        CamPos = CamPosPrec;//the new position need to be safe (not inside a wall)
+                    }
+                    CamAlpha = CamAlphaPrec;//recover the true direction you was going
+                }
             }
         }
 		
