@@ -2,7 +2,7 @@
 #include "TextMaker.hpp"
 
 std::vector<SingleText> demoText = {
-   {1, {"Testo di prova", "", "", ""}, 0, 0},
+   {1, {"Welcome in LabyrinthSurvival", "", "", ""}, 0, 0},
 };
 
 
@@ -66,10 +66,10 @@ class LabyrinthSurvival : public BaseProject {
     	windowResizable = GLFW_TRUE;
 		initialBackgroundColor = {0.0f, 0.6f, 0.8f, 1.0f};
 		
-		// Descriptor pool sizes
-		uniformBlocksInPool = 2;
-		texturesInPool = 1;
-		setsInPool = 1;
+        // Descriptor pool sizes
+        uniformBlocksInPool = 3;
+        texturesInPool = 1;
+        setsInPool = 2;
 		
 		Ar = 4.0f / 3.0f;
 	}
@@ -142,7 +142,7 @@ class LabyrinthSurvival : public BaseProject {
 
 		destroyMaze(r, c, maze);
         
-        //txt.init(this, &demoText);//BHOTESTO
+        txt.init(this, &demoText);
 	}
 	
 	// Here you create your pipelines and Descriptor Sets!
@@ -155,9 +155,7 @@ class LabyrinthSurvival : public BaseProject {
 					{1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
 				});
         
-        //std::cout << "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA\n";
-        //txt.pipelinesAndDescriptorSetsInit();//BHOTESTO
-        //std::cout << "BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB\n";
+        txt.pipelinesAndDescriptorSetsInit();
 	}
 
 	// Here you destroy your pipelines and Descriptor Sets!
@@ -166,7 +164,7 @@ class LabyrinthSurvival : public BaseProject {
 		
 		DS.cleanup();
         
-        //txt.pipelinesAndDescriptorSetsCleanup();//BHOTESTO
+        txt.pipelinesAndDescriptorSetsCleanup();
 	}
 
 	// Here you destroy all the Models, Texture and Desc. Set Layouts you created!
@@ -178,7 +176,7 @@ class LabyrinthSurvival : public BaseProject {
 		
 		P1.destroy();
         
-        //txt.localCleanup();//BHOTESTO
+        txt.localCleanup();
 	}
 	
 	// Here it is the creation of the command buffer:
@@ -193,7 +191,7 @@ class LabyrinthSurvival : public BaseProject {
 		vkCmdDrawIndexed(commandBuffer,
 				static_cast<uint32_t>(M.indices.size()), 1, 0, 0, 0);
         
-        //txt.populateCommandBuffer(commandBuffer, currentImage, 0);//BHOTESTO
+        txt.populateCommandBuffer(commandBuffer, currentImage, 0);
 	}
 
 	// Here is where you update the uniforms.
@@ -250,7 +248,7 @@ class LabyrinthSurvival : public BaseProject {
                     residue = residue + pih;
                     resDivVal = resDivVal - pih;
                 }
-                float tolleranceDivider = 3.0f;
+                const float tolleranceDivider = 3.0f;
                 float CamAlphaPrec = CamAlpha;
                 bool adjustLightlyPassingThroughWalls = false;
                 //if you are lightly passing through a wall, the correct direction is temporanely recovered to let you go on

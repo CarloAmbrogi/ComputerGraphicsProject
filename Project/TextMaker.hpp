@@ -199,20 +199,15 @@ struct TextMaker {
     }
 
     void createTextDescriptorSets() {
-        std::cout << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR\n";
         DS.init(BP, &DSL, {
                     {0, UNIFORM, sizeof(TextUniformBufferObject), nullptr},
                     {1, TEXTURE, 0, &T}
                 });
-        std::cout << "RRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRRR\n";
     }
 
     void pipelinesAndDescriptorSetsInit() {
-        std::cout << "EEEEEEEEEEEEEEEEEEEEEEE\n";
         P.create();
-        std::cout << "EEEEEEEEEEEEEEEEEEEEEEE\n";
         createTextDescriptorSets();
-        std::cout << "EEEEEEEEEEEEEEEEEEEEEEE\n";
     }
     
     void pipelinesAndDescriptorSetsCleanup() {
