@@ -1,0 +1,35 @@
+# Aspose.3D Wavefront OBJ Exporter
+# Copyright 2004-2023 Aspose Pty Ltd.
+# File created: 06/26/2023 07:35:30
+
+mtllib material.lib
+
+#
+# object Ground_01
+#
+
+v -2 0 2
+v 2 0 2
+v -2 0 -2
+v 2 0 -2
+# 4 vertices
+
+vn 0 1 0
+vn 0 1 0
+vn 0 1 0
+vn 0 1 0
+# 4 vertex normals
+
+vt 0.51174855232238768 0.01174864545464515 0
+vt 0.51174855232238768 0.05758737772703171 0
+vt 0.55758732557296752 0.01174864545464515 0
+vt 0.55758732557296752 0.05758737772703171 0
+# 4 texture coords
+
+g Ground_01
+usemtl Dungeon_Mat_01
+s 1
+f 1/1/1 2/3/2 3/2/3
+f 3/2/3 2/3/2 4/4/4
+#2 polygons
+
