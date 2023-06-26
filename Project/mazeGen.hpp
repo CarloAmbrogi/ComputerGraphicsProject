@@ -355,7 +355,7 @@ void LabyrinthSurvival::createMazeMesh(int row, int col, char **maze) {
         }
         */
         if(areThereAnyWallToDraw == true){
-            //START Here there are walls to be draw
+            //START Here there are walls to be drawn
             
             //Search a wall sequence starting with a | wall
             for(int i = 0; i < col+1; i++){

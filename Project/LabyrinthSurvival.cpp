@@ -39,8 +39,10 @@ class LabyrinthSurvival : public BaseProject {
 
 	// Models, textures and Descriptors (values assigned to the uniforms)
 	Model M{}, MK;//Model M for the labyrinth, model MK for the keys
+    std::vector<Model> walls;
 	DescriptorSet DS, DSK;//DescriptorSet DS for the labyrinth, DescriptorSet DSK for the keys
-    
+    std::vector<DescriptorSet> DSWalls;
+
     TextMaker txt;//To insert a text with the number of life
     
     bool labyrinthShape[NUMROW][NUMCOL];//to keep where there is a wall in the labyrinth
@@ -59,7 +61,16 @@ class LabyrinthSurvival : public BaseProject {
                        glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                        glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
     glm::vec3 KeyScale = glm::vec3(0.20f);
-    
+    /*
+    glm::vec3 wallPos = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::quat wallRot = glm::quat(glm::vec3(0, glm::radians(0.0f), 0)) *
+                       glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
+                       glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
+    glm::vec3 wallScale = glm::vec3(0.20f);
+    */
+    std::vector<glm::vec3> wallPos;
+    std::vector<glm::quat> wallRots;
+    glm::vec3 wallScale = glm::vec3(1.0f);
 
 	std::vector<float> vPos;
 	std::vector<int> vIdx;
@@ -75,9 +86,9 @@ class LabyrinthSurvival : public BaseProject {
 		initialBackgroundColor = {0.0f, 0.6f, 0.8f, 1.0f};
         
         // Descriptor pool sizes
-        uniformBlocksInPool = 5;
+        uniformBlocksInPool = 30;
         texturesInPool = 1;
-        setsInPool = 5;
+        setsInPool = 30;
 		
 		Ar = 4.0f / 3.0f;
 	}
@@ -92,7 +103,7 @@ class LabyrinthSurvival : public BaseProject {
 	// Here you also create your Descriptor set layouts and load the shaders for the pipelines
 	void localInit() {
 		// Descriptor Layouts [what will be passed to the shaders]
-//std::cout << "DSL\n";
+        //std::cout << "DSL\n";
 		DSL1.init(this, {
 					// this array contains the binding:
 					// first  element : the binding number
@@ -105,35 +116,48 @@ class LabyrinthSurvival : public BaseProject {
 		// Pipelines [Shader couples]
 		// The last array, is a vector of pointer to the layouts of the sets that will
 		// be used in this pipeline. The first element will be set 0, and so on..
-//std::cout << "P1\n";
+        //std::cout << "P1\n";
 		P1.init(this, "shaders/PhongVert.spv", "shaders/PhongFrag.spv", {&DSL1});
-//std::cout << "P1.set\n";
+        //std::cout << "P1.set\n";
 		P1.setAdvancedFeatures(VK_COMPARE_OP_LESS, VK_POLYGON_MODE_FILL,
  								    VK_CULL_MODE_NONE, false);
 
 		// Models, textures and Descriptors (values assigned to the uniforms)
         
         MK.init(this, "models/Key.obj");//model of a key
-        
+
+        for (int i = 0; i < 3; i++) {
+            Model wall;
+            wall.init(this, "models/Wall.obj");
+            walls.push_back(wall);
+
+            glm::vec3 pos = glm::vec3(i, 0, i);
+            wallPos.push_back(pos);
+
+            glm::quat wallRot = glm::quat(glm::vec3(0, glm::radians(0.0f), 0)) *
+                                glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
+                                glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
+            wallRots.push_back(wallRot);
+        }
+
         int r = NUMROW;
         int c = NUMCOL;
 		char **maze = genMaze(r, c);
 		
-//std::cout << "Maze Show\n";
+        //std::cout << "Maze Show\n";
 		for(int i=0; i < r; i++) {
 			std::cout << maze[i] << "\n";
 		}
 		std::cout << "\n";
 		
-//std::cout << "create Mesh\n";
+        //std::cout << "create Mesh\n";
 		createMazeMesh(r, c, maze);
 		std::cout << "Mesh size: V=" << vPos.size() << ", I=" << vIdx.size() << "\n";
-		
-		M.BP = this;
-		
+
+        M.BP = this;
 		for(int i = 0; i < vPos.size(); i+=3) {
 				Vertex vertex{};
-				vertex.pos = {vPos[i], vPos[i+1], vPos[i+2]};				
+				vertex.pos = {vPos[i], vPos[i+1], vPos[i+2]};
 				vertex.texCoord = {-1, -1};
 				vertex.norm = {0, 1, 0};//TODO Fix the norm
 				M.vertices.push_back(vertex);
@@ -170,6 +194,15 @@ class LabyrinthSurvival : public BaseProject {
                     {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
                     {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
                 });
+
+        for (Model wall : walls) {
+            DescriptorSet DSWall;
+            DSWall.init(this, &DSL1, {
+                    {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+                    {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
+            });
+            DSWalls.push_back(DSWall);
+        }
         
         txt.pipelinesAndDescriptorSetsInit();
 	}
@@ -180,7 +213,10 @@ class LabyrinthSurvival : public BaseProject {
 		
 		DS.cleanup();
         DSK.cleanup();
-        
+        for (DescriptorSet ds : DSWalls) {
+            ds.cleanup();
+        }
+
         txt.pipelinesAndDescriptorSetsCleanup();
 	}
 
@@ -189,6 +225,9 @@ class LabyrinthSurvival : public BaseProject {
 	void localCleanup() {
 		M.cleanup();
         MK.cleanup();
+        for (Model wall : walls) {
+            wall.cleanup();
+        }
 
 		DSL1.cleanup();
 		
@@ -203,20 +242,21 @@ class LabyrinthSurvival : public BaseProject {
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage) {
 
 		P1.bind(commandBuffer);
+
 		M.bind(commandBuffer);
 		DS.bind(commandBuffer, P1, currentImage);
-					
-		vkCmdDrawIndexed(commandBuffer,
-				static_cast<uint32_t>(M.indices.size()), 1, 0, 0, 0);
-        
+		vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(M.indices.size()), 1, 0, 0, 0);
         
         MK.bind(commandBuffer);
         DSK.bind(commandBuffer, P1, currentImage);
-                    
-        vkCmdDrawIndexed(commandBuffer,
-                static_cast<uint32_t>(MK.indices.size()), 1, 0, 0, 0);
-        
-        
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MK.indices.size()), 1, 0, 0, 0);
+
+        for (int i = 0; i < walls.size(); i++) {
+            walls[i].bind(commandBuffer);
+            DSWalls[i].bind(commandBuffer, P1, currentImage);
+            vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(walls[i].indices.size()), 1, 0, 0, 0);
+        }
+
         txt.populateCommandBuffer(commandBuffer, currentImage, 0);
 	}
     
@@ -345,8 +385,15 @@ class LabyrinthSurvival : public BaseProject {
         ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
         DSK.map(currentImage, &ubo, sizeof(ubo), 0);
         DSK.map(currentImage, &gubo, sizeof(gubo), 1);
-        
-	}
+
+        for (int i = 0; i < walls.size(); i++) {
+            ubo.mMat = MakeWorldMatrix(wallPos[i], wallRots[i], wallScale) * baseTr;
+            ubo.mvpMat = ViewPrj * ubo.mMat;
+            ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
+            DSWalls[i].map(currentImage, &ubo, sizeof(ubo), 0);
+            DSWalls[i].map(currentImage, &gubo, sizeof(gubo), 1);
+        }
+    }
 	
 	char **genMaze(int nr, int nc) {
         // Here the labyrinth is randomly generated
