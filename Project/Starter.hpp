@@ -25,10 +25,10 @@
 #include <chrono>
 
 #define TINYOBJLOADER_IMPLEMENTATION
-#include <tiny_obj_loader.h>
+#include "./headers/tiny_obj_loader.h"
 
 #define STB_IMAGE_IMPLEMENTATION
-#include <stb_image.h>
+#include "./headers/stb_image.h"
 
 const int MAX_FRAMES_IN_FLIGHT = 2;
 

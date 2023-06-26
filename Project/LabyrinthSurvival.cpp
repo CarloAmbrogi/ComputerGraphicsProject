@@ -39,6 +39,7 @@ class LabyrinthSurvival : public BaseProject {
 
 	// Models, textures and Descriptors (values assigned to the uniforms)
 	Model M{};
+    std::vector<Model> Walls;
 	DescriptorSet DS;
     
     TextMaker txt;//To insert a text with the number of life
@@ -117,30 +118,38 @@ class LabyrinthSurvival : public BaseProject {
 //std::cout << "create Mesh\n";
 		createMazeMesh(r, c, maze);
 		std::cout << "Mesh size: V=" << vPos.size() << ", I=" << vIdx.size() << "\n";
-		
-		M.BP = this;
+
+        //M.init(this, "models/Wall.obj");
+
+        //M.BP = this;
 		
 		for(int i = 0; i < vPos.size(); i+=3) {
-				Vertex vertex{};
-				vertex.pos = {vPos[i], vPos[i+1], vPos[i+2]};				
-				vertex.texCoord = {-1, -1};
-				vertex.norm = {0, 1, 0};				
-				M.vertices.push_back(vertex);
+            Vertex vertex{};
+            vertex.pos = {vPos[i], vPos[i+1], vPos[i+2]};
+            vertex.texCoord = {-1, -1};
+            vertex.norm = {0, 1, 0};
+            Model wall;
+            wall.init(this, "models/Wall.obj");
+            wall.vertices.push_back(vertex);
+            Walls.push_back(wall);
 		}
 		for(int i = 0; i < vIdx.size(); i++) {
-			if((vIdx[i] < 0) || (vIdx[i] >= M.vertices.size())) {
-				std::cout << "Error! Index: " << i << " is outside range (" << vIdx[i] << ")\n";
-				M.indices.push_back(0);
-			} else {
-				M.indices.push_back(vIdx[i]);
-			}
+            for (int j = 0; j < Walls.size(); j++) {
+                if ((vIdx[i] < 0) || (vIdx[i] >= Walls[j].vertices.size())) {
+                    std::cout << "Error! Index: " << i << " is outside range (" << vIdx[i] << ")\n";
+                    Walls[j].indices.push_back(0);
+                } else {
+                    Walls[j].indices.push_back(vIdx[i]);
+                }
+                Walls[j].createVertexBuffer();
+                Walls[j].createIndexBuffer();
+            }
 		}
 
-		M.createVertexBuffer();
-		M.createIndexBuffer();
-		std::cout << "Created model: V=" << M.vertices.size() << ", I=" << M.indices.size() << "\n";
+        std::cout << "Created model: V=" << M.vertices.size() << ", I=" << M.indices.size() << "\n";
 
-		destroyMaze(r, c, maze);
+
+        destroyMaze(r, c, maze);
         
         txt.init(this, &demoText);
 	}
@@ -171,6 +180,7 @@ class LabyrinthSurvival : public BaseProject {
 	// You also have to destroy the pipelines
 	void localCleanup() {
 		M.cleanup();
+        //Wall.cleanup();
 
 		DSL1.cleanup();
 		
@@ -186,12 +196,13 @@ class LabyrinthSurvival : public BaseProject {
 
 		P1.bind(commandBuffer);
 		M.bind(commandBuffer);
+        //Wall.bind(commandBuffer);
 		DS.bind(commandBuffer, P1, currentImage);
 					
-		vkCmdDrawIndexed(commandBuffer,
-				static_cast<uint32_t>(M.indices.size()), 1, 0, 0, 0);
-        
-        txt.populateCommandBuffer(commandBuffer, currentImage, 0);
+		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(M.indices.size()), 1, 0, 0, 0);
+        //vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(Wall.indices.size()), 1, 0, 0, 0);
+
+        //txt.populateCommandBuffer(commandBuffer, currentImage, 0);//BHOTESTO
 	}
 
 	// Here is where you update the uniforms.
