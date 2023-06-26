@@ -38,9 +38,8 @@ class LabyrinthSurvival : public BaseProject {
 	Pipeline P1{};
 
 	// Models, textures and Descriptors (values assigned to the uniforms)
-	Model M{};
-    std::vector<Model> Walls;
-	DescriptorSet DS;
+	Model M{}, MK;//Model M for the labyrinth, model MK for the keys
+	DescriptorSet DS, DSK;//DescriptorSet DS for the labyrinth, DescriptorSet DSK for the keys
     
     TextMaker txt;//To insert a text with the number of life
     
@@ -53,6 +52,14 @@ class LabyrinthSurvival : public BaseProject {
 	float CamAlpha = 0.0f;
 	float CamBeta = 0.0f;
 	float Ar;
+    
+    
+    glm::vec3 KeyPos = glm::vec3(0.0f, 0.0f, 0.0f);
+    glm::quat KeyRot = glm::quat(glm::vec3(0, glm::radians(45.0f), 0)) *
+                       glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
+                       glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
+    glm::vec3 KeyScale = glm::vec3(0.20f);
+    
 
 	std::vector<float> vPos;
 	std::vector<int> vIdx;
@@ -66,11 +73,11 @@ class LabyrinthSurvival : public BaseProject {
 		windowTitle = "LabyrinthSurvival";
     	windowResizable = GLFW_TRUE;
 		initialBackgroundColor = {0.0f, 0.6f, 0.8f, 1.0f};
-		
+        
         // Descriptor pool sizes
-        uniformBlocksInPool = 3;
+        uniformBlocksInPool = 5;
         texturesInPool = 1;
-        setsInPool = 2;
+        setsInPool = 5;
 		
 		Ar = 4.0f / 3.0f;
 	}
@@ -105,6 +112,9 @@ class LabyrinthSurvival : public BaseProject {
  								    VK_CULL_MODE_NONE, false);
 
 		// Models, textures and Descriptors (values assigned to the uniforms)
+        
+        MK.init(this, "models/Key.obj");//model of a key
+        
         int r = NUMROW;
         int c = NUMCOL;
 		char **maze = genMaze(r, c);
@@ -118,38 +128,30 @@ class LabyrinthSurvival : public BaseProject {
 //std::cout << "create Mesh\n";
 		createMazeMesh(r, c, maze);
 		std::cout << "Mesh size: V=" << vPos.size() << ", I=" << vIdx.size() << "\n";
-
-        //M.init(this, "models/Wall.obj");
-
-        //M.BP = this;
+		
+		M.BP = this;
 		
 		for(int i = 0; i < vPos.size(); i+=3) {
-            Vertex vertex{};
-            vertex.pos = {vPos[i], vPos[i+1], vPos[i+2]};
-            vertex.texCoord = {-1, -1};
-            vertex.norm = {0, 1, 0};
-            Model wall;
-            wall.init(this, "models/Wall.obj");
-            wall.vertices.push_back(vertex);
-            Walls.push_back(wall);
+				Vertex vertex{};
+				vertex.pos = {vPos[i], vPos[i+1], vPos[i+2]};				
+				vertex.texCoord = {-1, -1};
+				vertex.norm = {0, 1, 0};//TODO Fix the norm
+				M.vertices.push_back(vertex);
 		}
 		for(int i = 0; i < vIdx.size(); i++) {
-            for (int j = 0; j < Walls.size(); j++) {
-                if ((vIdx[i] < 0) || (vIdx[i] >= Walls[j].vertices.size())) {
-                    std::cout << "Error! Index: " << i << " is outside range (" << vIdx[i] << ")\n";
-                    Walls[j].indices.push_back(0);
-                } else {
-                    Walls[j].indices.push_back(vIdx[i]);
-                }
-                Walls[j].createVertexBuffer();
-                Walls[j].createIndexBuffer();
-            }
+			if((vIdx[i] < 0) || (vIdx[i] >= M.vertices.size())) {
+				std::cout << "Error! Index: " << i << " is outside range (" << vIdx[i] << ")\n";
+				M.indices.push_back(0);
+			} else {
+				M.indices.push_back(vIdx[i]);
+			}
 		}
 
-        std::cout << "Created model: V=" << M.vertices.size() << ", I=" << M.indices.size() << "\n";
+		M.createVertexBuffer();
+		M.createIndexBuffer();
+		std::cout << "Created model: V=" << M.vertices.size() << ", I=" << M.indices.size() << "\n";
 
-
-        destroyMaze(r, c, maze);
+		destroyMaze(r, c, maze);
         
         txt.init(this, &demoText);
 	}
@@ -164,6 +166,11 @@ class LabyrinthSurvival : public BaseProject {
 					{1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
 				});
         
+        DSK.init(this, &DSL1, {
+                    {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+                    {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
+                });
+        
         txt.pipelinesAndDescriptorSetsInit();
 	}
 
@@ -172,6 +179,7 @@ class LabyrinthSurvival : public BaseProject {
 		P1.cleanup();
 		
 		DS.cleanup();
+        DSK.cleanup();
         
         txt.pipelinesAndDescriptorSetsCleanup();
 	}
@@ -180,7 +188,7 @@ class LabyrinthSurvival : public BaseProject {
 	// You also have to destroy the pipelines
 	void localCleanup() {
 		M.cleanup();
-        //Wall.cleanup();
+        MK.cleanup();
 
 		DSL1.cleanup();
 		
@@ -196,14 +204,32 @@ class LabyrinthSurvival : public BaseProject {
 
 		P1.bind(commandBuffer);
 		M.bind(commandBuffer);
-        //Wall.bind(commandBuffer);
 		DS.bind(commandBuffer, P1, currentImage);
 					
-		vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(M.indices.size()), 1, 0, 0, 0);
-        //vkCmdDrawIndexed(commandBuffer, static_cast<uint32_t>(Wall.indices.size()), 1, 0, 0, 0);
-
-        //txt.populateCommandBuffer(commandBuffer, currentImage, 0);//BHOTESTO
+		vkCmdDrawIndexed(commandBuffer,
+				static_cast<uint32_t>(M.indices.size()), 1, 0, 0, 0);
+        
+        
+        MK.bind(commandBuffer);
+        DSK.bind(commandBuffer, P1, currentImage);
+                    
+        vkCmdDrawIndexed(commandBuffer,
+                static_cast<uint32_t>(MK.indices.size()), 1, 0, 0, 0);
+        
+        
+        txt.populateCommandBuffer(commandBuffer, currentImage, 0);
 	}
+    
+    glm::mat4 MakeWorldMatrix(glm::vec3 pos, glm::quat rQ, glm::vec3 size) {
+        // creates and returns a World Matrix that positions the object at <pos>,
+        // orients it according to <rQ>, and scales it according to the sizes
+        // given in vector <size>
+        glm::mat4 Translation = glm::translate(glm::mat4(1), pos);
+        glm::mat4 Rotation = glm::mat4(rQ);
+        glm::mat4 Scale = glm::scale(glm::mat4(1), size);
+        glm::mat4 M = Translation * Rotation * Scale;
+        return M;
+    }
 
 	// Here is where you update the uniforms.
 	// Very likely this will be where you will be writing the logic of your application.
@@ -307,12 +333,19 @@ class LabyrinthSurvival : public BaseProject {
 		gubo.lightDir = glm::vec3(cos(glm::radians(135.0f))*cos(glm::radians(30.0f)), sin(glm::radians(135.0f)), sin(glm::radians(30.0f)));
 		gubo.lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 		gubo.eyePos = glm::vec3(100.0, 100.0, 100.0);
+        
+        ubo.mMat = baseTr;
+        ubo.mvpMat = ViewPrj * ubo.mMat;
+        ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
+        DS.map(currentImage, &ubo, sizeof(ubo), 0);
+        DS.map(currentImage, &gubo, sizeof(gubo), 1);
 
-		ubo.mMat = baseTr;
-		ubo.mvpMat = ViewPrj * ubo.mMat;
-		ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
-		DS.map(currentImage, &ubo, sizeof(ubo), 0);
-		DS.map(currentImage, &gubo, sizeof(gubo), 1);
+        ubo.mMat = MakeWorldMatrix(KeyPos, KeyRot, KeyScale) * baseTr;//translate the kay to locate
+        ubo.mvpMat = ViewPrj * ubo.mMat;
+        ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
+        DSK.map(currentImage, &ubo, sizeof(ubo), 0);
+        DSK.map(currentImage, &gubo, sizeof(gubo), 1);
+        
 	}
 	
 	char **genMaze(int nr, int nc) {
@@ -579,6 +612,7 @@ class LabyrinthSurvival : public BaseProject {
                             if(playerToBeLocated){
                                 out[i][j] = 'P';
                                 CamPos = glm::vec3(j+0.5, 0.5, i+0.5);//set starting position
+                                KeyPos = glm::vec3(j+0.5, 0.5, i+0.5);
                             } else if(foodToBeLocated){
                                 out[i][j] = 'F';
                             }
