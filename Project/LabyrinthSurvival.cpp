@@ -38,14 +38,17 @@ class LabyrinthSurvival : public BaseProject {
 	Pipeline P1{};
 
 	// Models, textures and Descriptors (values assigned to the uniforms)
-	Model M{}, MK;//Model M for the labyrinth, model MK for the keys
-	DescriptorSet DS, DSK;//DescriptorSet DS for the labyrinth, DescriptorSet DSK for the keys
+    Model M{};//Model M for the labyrinth
+    DescriptorSet DS;//DescriptorSet DS for the labyrinth
+    std::vector<Model> MK;//model MK for the keys
+    std::vector<DescriptorSet> DSK;//DescriptorSet DSK for the keys
     
     TextMaker txt;//To insert a text with the number of life
     
     bool labyrinthShape[NUMROW][NUMCOL];//to keep where there is a wall in the labyrinth
     bool labyrinthShapeInitialized = false;//if the labyrinth is initialized
-	
+    int effectiveNumberOfKeys = 0;//this var will be set with the number of keys in the labyrinth (after labyrinth generation)
+    
 	// Other application parameters
 	glm::vec3 CamPos = glm::vec3(0.5, 0.5, 10.0);//camera position
     glm::vec3 CamPosPrec = glm::vec3(0.5, 0.5, 10.0);//remember prew position to check if you are not overriding a wall
@@ -54,7 +57,7 @@ class LabyrinthSurvival : public BaseProject {
 	float Ar;
     
     
-    glm::vec3 KeyPos = glm::vec3(0.0f, 0.0f, 0.0f);
+    std::vector<glm::vec3> KeyPos;
     glm::quat KeyRot = glm::quat(glm::vec3(0, glm::radians(45.0f), 0)) *
                        glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                        glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
@@ -75,9 +78,9 @@ class LabyrinthSurvival : public BaseProject {
 		initialBackgroundColor = {0.0f, 0.6f, 0.8f, 1.0f};
         
         // Descriptor pool sizes
-        uniformBlocksInPool = 5;
-        texturesInPool = 1;
-        setsInPool = 5;
+        uniformBlocksInPool = 60;
+        texturesInPool = 60;
+        setsInPool = 60;
 		
 		Ar = 4.0f / 3.0f;
 	}
@@ -113,11 +116,15 @@ class LabyrinthSurvival : public BaseProject {
 
 		// Models, textures and Descriptors (values assigned to the uniforms)
         
-        MK.init(this, "models/Key.obj");//model of a key
-        
         int r = NUMROW;
         int c = NUMCOL;
 		char **maze = genMaze(r, c);
+        
+        for(int i = 0; i < effectiveNumberOfKeys; i++){
+            Model additiveM;
+            additiveM.init(this, "models/Key.obj");//model of a key
+            MK.push_back(additiveM);
+        }
 		
 //std::cout << "Maze Show\n";
 		for(int i=0; i < r; i++) {
@@ -166,10 +173,14 @@ class LabyrinthSurvival : public BaseProject {
 					{1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
 				});
         
-        DSK.init(this, &DSL1, {
-                    {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-                    {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
-                });
+        for(int i = 0; i < effectiveNumberOfKeys; i++){
+            DescriptorSet additiveDS;
+            additiveDS.init(this, &DSL1, {
+                        {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+                        {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
+                    });
+            DSK.push_back(additiveDS);
+        }
         
         txt.pipelinesAndDescriptorSetsInit();
 	}
@@ -179,7 +190,9 @@ class LabyrinthSurvival : public BaseProject {
 		P1.cleanup();
 		
 		DS.cleanup();
-        DSK.cleanup();
+        for(int i = 0; i < DSK.size(); i++){
+            DSK[i].cleanup();
+        }
         
         txt.pipelinesAndDescriptorSetsCleanup();
 	}
@@ -188,7 +201,10 @@ class LabyrinthSurvival : public BaseProject {
 	// You also have to destroy the pipelines
 	void localCleanup() {
 		M.cleanup();
-        MK.cleanup();
+        
+        for(int i = 0; i < MK.size(); i++){
+            MK[i].cleanup();
+        }
 
 		DSL1.cleanup();
 		
@@ -205,17 +221,15 @@ class LabyrinthSurvival : public BaseProject {
 		P1.bind(commandBuffer);
 		M.bind(commandBuffer);
 		DS.bind(commandBuffer, P1, currentImage);
-					
 		vkCmdDrawIndexed(commandBuffer,
 				static_cast<uint32_t>(M.indices.size()), 1, 0, 0, 0);
         
-        
-        MK.bind(commandBuffer);
-        DSK.bind(commandBuffer, P1, currentImage);
-                    
-        vkCmdDrawIndexed(commandBuffer,
-                static_cast<uint32_t>(MK.indices.size()), 1, 0, 0, 0);
-        
+        for(int i = 0; i < MK.size(); i++){
+            MK[i].bind(commandBuffer);
+            DSK[i].bind(commandBuffer, P1, currentImage);
+            vkCmdDrawIndexed(commandBuffer,
+                    static_cast<uint32_t>(MK[i].indices.size()), 1, 0, 0, 0);
+        }
         
         txt.populateCommandBuffer(commandBuffer, currentImage, 0);
 	}
@@ -339,12 +353,14 @@ class LabyrinthSurvival : public BaseProject {
         ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
         DS.map(currentImage, &ubo, sizeof(ubo), 0);
         DS.map(currentImage, &gubo, sizeof(gubo), 1);
-
-        ubo.mMat = MakeWorldMatrix(KeyPos, KeyRot, KeyScale) * baseTr;//translate the kay to locate
-        ubo.mvpMat = ViewPrj * ubo.mMat;
-        ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
-        DSK.map(currentImage, &ubo, sizeof(ubo), 0);
-        DSK.map(currentImage, &gubo, sizeof(gubo), 1);
+        
+        for(int i = 0; i < MK.size(); i++){
+            ubo.mMat = MakeWorldMatrix(KeyPos[i], KeyRot, KeyScale) * baseTr;//translate the key to locate
+            ubo.mvpMat = ViewPrj * ubo.mMat;
+            ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
+            DSK[i].map(currentImage, &ubo, sizeof(ubo), 0);
+            DSK[i].map(currentImage, &gubo, sizeof(gubo), 1);
+        }
         
 	}
 	
@@ -569,6 +585,9 @@ class LabyrinthSurvival : public BaseProject {
         // Adjust labyrinth
         for(int i = 0; i < nr; i++){
             for(int j = 0; j < nc; j++){
+                if(out[i][j] == 't' || out[i][j] == 'c'){
+                    out[i][j] = ' ';
+                }
                 if(out[i][j] == 'W' || out[i][j] == 't' || out[i][j] == 'c' || out[i][j] == 'T' || out[i][j] == 'C' || out[i][j] == 'L'){
                     out[i][j] = '#';
                 }
@@ -587,44 +606,58 @@ class LabyrinthSurvival : public BaseProject {
         if(cellNum < minCellNum){
             return genMaze(nr, nc);
         }
-        // Locate the palyer, the character and the food
+        // Locate the player, the keys and the food
+        //first decide the number of keys
         const int minNumOfKeys = 3;
         const int maxNumOfKeys = 7;
         int varNumOfKeys = maxNumOfKeys - minNumOfKeys;
         int numOfKeys = rand() % varNumOfKeys;
         numOfKeys += minNumOfKeys;
+        effectiveNumberOfKeys = numOfKeys;
+        //second decide the number of food
         const int minNumOfFood = 3;
         const int maxNumOfFood = 7;
         int varNumOfFood = maxNumOfFood - minNumOfFood;
         int numOfFood = rand() % varNumOfFood;
         numOfFood += minNumOfFood;
-        bool playerToBeLocated = true;
-        bool foodToBeLocated = true;
-        int cellNumForLocation = cellNum;
-        for(int count = 0; count < numOfKeys + 1 + numOfFood; count++){
+        //a var to represent what you are locating:
+        int locatingWhat = 0;// 0 = player ; 1 = keys ; 2 = food
+        int cellNumForLocation = cellNum;//cell number available for location
+        //locate these objects
+        int counterForCurrentObject = 0;
+        while(locatingWhat < 3){
             int location = rand() % cellNumForLocation;
             for(int i = 0; i < nr; i++){
                 for(int j = 0; j < nc; j++){
                     if(out[i][j] == ' '){
                         location -= 1;
                         if(location == 0 && out[i][j] == ' '){
-                            out[i][j] = 'K';
-                            if(playerToBeLocated){
+                            //here locate the object
+                            if(locatingWhat == 0){//player
                                 out[i][j] = 'P';
                                 CamPos = glm::vec3(j+0.5, 0.5, i+0.5);//set starting position
-                                KeyPos = glm::vec3(j+0.5, 0.5, i+0.5);
-                            } else if(foodToBeLocated){
+                                locatingWhat++;
+                            } else if(locatingWhat == 1){//keys
+                                out[i][j] = 'K';
+                                KeyPos.push_back(glm::vec3(j+0.5, 0.5, i+0.5));
+                                counterForCurrentObject++;
+                                if(counterForCurrentObject >= numOfKeys){
+                                    counterForCurrentObject = 0;
+                                    locatingWhat++;
+                                }
+                            } else if(locatingWhat == 2){//food
                                 out[i][j] = 'F';
+                                counterForCurrentObject++;
+                                if(counterForCurrentObject >= numOfFood){
+                                    counterForCurrentObject = 0;
+                                    locatingWhat++;
+                                }
                             }
+                            cellNumForLocation -= 1;
                         }
                     }
                 }
             }
-            playerToBeLocated = false;
-            if(count > numOfFood){
-                foodToBeLocated = false;
-            }
-            cellNumForLocation -= 1;
         }
         // update labyrinthShape with walls positions
         for(int i = 0; i < nr; i++){
