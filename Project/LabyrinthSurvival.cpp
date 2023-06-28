@@ -51,6 +51,7 @@ class LabyrinthSurvival : public BaseProject {
     bool labyrinthShape[NUMROW][NUMCOL];//to keep where there is a wall in the labyrinth
     bool labyrinthShapeInitialized = false;//if the labyrinth is initialized
     int effectiveNumberOfKeys = 0;//this var will be set with the number of keys in the labyrinth (after labyrinth generation)
+    int effectiveNumberOfWalls = 0;//this var will be set with the number of walls in the labyrinth (after labyrinth generation)
     
 	// Other application parameters
 	glm::vec3 CamPos = glm::vec3(0.5, 0.5, 10.0);//camera position
@@ -65,16 +66,10 @@ class LabyrinthSurvival : public BaseProject {
                        glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                        glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
     glm::vec3 KeyScale = glm::vec3(0.20f);
-    /*
-    glm::vec3 wallPos = glm::vec3(0.0f, 0.0f, 0.0f);
-    glm::quat wallRot = glm::quat(glm::vec3(0, glm::radians(0.0f), 0)) *
-                       glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
-                       glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
-    glm::vec3 wallScale = glm::vec3(0.20f);
-    */
+    
     std::vector<glm::vec3> wallPos;
     std::vector<glm::quat> wallRots;
-    glm::vec3 wallScale = glm::vec3(1.0f);
+    glm::vec3 wallScale = glm::vec3(0.25f);
 
 	std::vector<float> vPos;
 	std::vector<int> vIdx;
@@ -90,9 +85,9 @@ class LabyrinthSurvival : public BaseProject {
 		initialBackgroundColor = {0.0f, 0.6f, 0.8f, 1.0f};
         
         // Descriptor pool sizes
-        uniformBlocksInPool = 60;
-        texturesInPool = 60;
-        setsInPool = 60;
+        uniformBlocksInPool = 60000;
+        texturesInPool = 60000;
+        setsInPool = 60000;
 		
 		Ar = 4.0f / 3.0f;
 	}
@@ -128,23 +123,15 @@ class LabyrinthSurvival : public BaseProject {
 
 		// Models, textures and Descriptors (values assigned to the uniforms)
         
-        for (int i = 0; i < 3; i++) {
+        int r = NUMROW;
+        int c = NUMCOL;
+        char **maze = genMaze(r, c);
+        
+        for (int i = 0; i < effectiveNumberOfWalls; i++) {
             Model wall;
             wall.init(this, "models/Wall.obj");
             walls.push_back(wall);
-
-            glm::vec3 pos = glm::vec3(i, 0, i);
-            wallPos.push_back(pos);
-
-            glm::quat wallRot = glm::quat(glm::vec3(0, glm::radians(0.0f), 0)) *
-                                glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
-                                glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
-            wallRots.push_back(wallRot);
         }
-
-        int r = NUMROW;
-        int c = NUMCOL;
-		char **maze = genMaze(r, c);
         
         for(int i = 0; i < effectiveNumberOfKeys; i++){
             Model additiveM;
@@ -413,7 +400,7 @@ class LabyrinthSurvival : public BaseProject {
         }
 
         for (int i = 0; i < walls.size(); i++) {
-            ubo.mMat = MakeWorldMatrix(wallPos[i], wallRots[i], wallScale) * baseTr;
+            ubo.mMat = MakeWorldMatrix(wallPos[i], wallRots[i], wallScale) * baseTr;//translate and rotate the walls to locate
             ubo.mvpMat = ViewPrj * ubo.mMat;
             ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
             DSWalls[i].map(currentImage, &ubo, sizeof(ubo), 0);
@@ -727,6 +714,53 @@ class LabyrinthSurvival : public BaseProject {
             }
         }
         labyrinthShapeInitialized = true;
+        // Add the models of the walls
+        //| walls
+        for(int i = 0; i < nr; i++){
+            for(int j = 1; j < nc; j++){
+                if(out[i][j-1] == '#' && out[i][j] != '#'){
+                    effectiveNumberOfWalls++;
+                    glm::vec3 pos = glm::vec3(j, 0, i+0.5);
+                    wallPos.push_back(pos);
+                    glm::quat wallRot = glm::quat(glm::vec3(0, glm::radians(90.0f), 0)) *
+                                        glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
+                                        glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
+                    wallRots.push_back(wallRot);
+                }
+                if(out[i][j-1] != '#' && out[i][j] == '#'){
+                    effectiveNumberOfWalls++;
+                    glm::vec3 pos = glm::vec3(j, 0, i+0.5);
+                    wallPos.push_back(pos);
+                    glm::quat wallRot = glm::quat(glm::vec3(0, glm::radians(-90.0f), 0)) *
+                                        glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
+                                        glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
+                    wallRots.push_back(wallRot);
+                }
+            }
+        }
+        //- walls
+        for(int i = 1; i < nr; i++){
+            for(int j = 0; j < nc; j++){
+                if(out[i-1][j] == '#' && out[i][j] != '#'){
+                    effectiveNumberOfWalls++;
+                    glm::vec3 pos = glm::vec3(j+0.5, 0, i);
+                    wallPos.push_back(pos);
+                    glm::quat wallRot = glm::quat(glm::vec3(0, glm::radians(0.0f), 0)) *
+                                        glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
+                                        glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
+                    wallRots.push_back(wallRot);
+                }
+                if(out[i-1][j] != '#' && out[i][j] == '#'){
+                    effectiveNumberOfWalls++;
+                    glm::vec3 pos = glm::vec3(j+0.5, 0, i);
+                    wallPos.push_back(pos);
+                    glm::quat wallRot = glm::quat(glm::vec3(0, glm::radians(180.0f), 0)) *
+                                        glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
+                                        glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
+                    wallRots.push_back(wallRot);
+                }
+            }
+        }
         // Return
 		return out;
 	}
