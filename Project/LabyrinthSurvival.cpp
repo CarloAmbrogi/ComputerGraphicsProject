@@ -40,9 +40,11 @@ class LabyrinthSurvival : public BaseProject {
 
     Model M{};//Model M for the labyrinth
     DescriptorSet DS;//DescriptorSet DS for the labyrinth
-    Texture TW;//Texture for the wall
+    Texture TL, TW, TK, TF;//Texture for the labyrinth, for the wall, for the keys and for the food
     std::vector<Model> MK;//model MK for the keys
+    std::vector<Model> MF;//model MF for the food
     std::vector<DescriptorSet> DSK;//DescriptorSet DSK for the keys
+    std::vector<DescriptorSet> DSF;//DescriptorSet DSF for the food
     std::vector<Model> walls;//model for the walls
     std::vector<DescriptorSet> DSWalls;//DescriptorSet for the walls
     
@@ -52,7 +54,8 @@ class LabyrinthSurvival : public BaseProject {
     bool labyrinthShapeInitialized = false;//if the labyrinth is initialized
     int effectiveNumberOfKeys = 0;//this var will be set with the number of keys in the labyrinth (after labyrinth generation)
     int effectiveNumberOfWalls = 0;//this var will be set with the number of walls in the labyrinth (after labyrinth generation)
-    
+    int effectiveNumberOfFood = 0;//this var will be set with the number of food in the labyrinth (after labyrinth generation)
+
 	// Other application parameters
 	glm::vec3 CamPos = glm::vec3(0.5, 0.5, 10.0);//camera position
     glm::vec3 CamPosPrec = glm::vec3(0.5, 0.5, 10.0);//remember prew position to check if you are not overriding a wall
@@ -60,13 +63,21 @@ class LabyrinthSurvival : public BaseProject {
 	float CamBeta = 0.0f;
 	float Ar;
     
-    
+    //parameters for the key pos, rot and scale
     std::vector<glm::vec3> KeyPos;
     glm::quat KeyRot = glm::quat(glm::vec3(0, glm::radians(45.0f), 0)) *
                        glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                        glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
     glm::vec3 KeyScale = glm::vec3(0.20f);
     
+    //parameters for the food pos, rot and scale
+    std::vector<glm::vec3> FoodPos;
+    glm::quat FoodRot = glm::quat(glm::vec3(0, glm::radians(45.0f), 0)) *
+                       glm::quat(glm::vec3(glm::radians(-90.0f), 0, 0)) *
+                       glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
+    glm::vec3 FoodScale = glm::vec3(0.018f);
+    
+    //parameters for the wall pos, rot and scale
     std::vector<glm::vec3> wallPos;
     std::vector<glm::quat> wallRots;
     glm::vec3 wallScale = glm::vec3(0.25f);
@@ -110,7 +121,7 @@ class LabyrinthSurvival : public BaseProject {
 					// third  element : the pipeline stage where it will be used
 					{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
 					{1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS},
-                    {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_ALL_GRAPHICS}
+                    {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
 				  });
 
 		// Pipelines [Shader couples]
@@ -130,14 +141,20 @@ class LabyrinthSurvival : public BaseProject {
                 
         for (int i = 0; i < effectiveNumberOfWalls; i++) {
             Model wall;
-            wall.init(this, "models/Wall.obj");
+            wall.init(this, "models/Wall.obj");//model of a wall
             walls.push_back(wall);
         }
         
         for(int i = 0; i < effectiveNumberOfKeys; i++){
-            Model additiveM;
-            additiveM.init(this, "models/Key.obj");//model of a key
-            MK.push_back(additiveM);
+            Model key;
+            key.init(this, "models/Key.obj");//model of a key
+            MK.push_back(key);
+        }
+        
+        for(int i = 0; i < effectiveNumberOfFood; i++){
+            Model food;
+            food.init(this, "models/12190_Heart_v1_L3.obj");//model of a food
+            MF.push_back(food);
         }
 		
         //std::cout << "Maze Show\n";
@@ -180,7 +197,10 @@ class LabyrinthSurvival : public BaseProject {
 			}
 		}
         
+        TL.init(this, "textures/IMG_9647.png");
         TW.init(this, "textures/LowPolyDungeonsLite_Texture_01.png");
+        TK.init(this, "textures/key.png");
+        TF.init(this, "textures/food.png");
 
 		M.createVertexBuffer();
 		M.createIndexBuffer();
@@ -199,16 +219,27 @@ class LabyrinthSurvival : public BaseProject {
 		DS.init(this, &DSL1, {
 					{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
 					{1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr},
-                    {2, TEXTURE, 0, &TW}
+                    {2, TEXTURE, 0, &TL}
 				});
         
         for(int i = 0; i < effectiveNumberOfKeys; i++){
             DescriptorSet additiveDS;
             additiveDS.init(this, &DSL1, {
                         {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-                        {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
+                        {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr},
+                        {2, TEXTURE, 0, &TK}
                     });
             DSK.push_back(additiveDS);
+        }
+        
+        for(int i = 0; i < effectiveNumberOfFood; i++){
+            DescriptorSet additiveDS;
+            additiveDS.init(this, &DSL1, {
+                        {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+                        {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr},
+                        {2, TEXTURE, 0, &TF}
+                    });
+            DSF.push_back(additiveDS);
         }
 
         for (Model wall : walls) {
@@ -229,10 +260,12 @@ class LabyrinthSurvival : public BaseProject {
 		P1.cleanup();
 		
 		DS.cleanup();
-        for(int i = 0; i < DSK.size(); i++){
-            DSK[i].cleanup();
+        for(DescriptorSet ds : DSK){
+            ds.cleanup();
         }
-        
+        for(DescriptorSet ds : DSF){
+            ds.cleanup();
+        }
         for (DescriptorSet ds : DSWalls) {
             ds.cleanup();
         }
@@ -243,15 +276,21 @@ class LabyrinthSurvival : public BaseProject {
 	// Here you destroy all the Models, Texture and Desc. Set Layouts you created!
 	// You also have to destroy the pipelines
 	void localCleanup() {
+        TL.cleanup();
         TW.cleanup();
+        TK.cleanup();
+        TF.cleanup();
         
 		M.cleanup();
         
-        for(int i = 0; i < MK.size(); i++){
-            MK[i].cleanup();
+        for (Model key : MK){
+            key.cleanup();
         }
         for (Model wall : walls) {
             wall.cleanup();
+        }
+        for (Model food : MF){
+            food.cleanup();
         }
 
 		DSL1.cleanup();
@@ -278,6 +317,13 @@ class LabyrinthSurvival : public BaseProject {
             DSK[i].bind(commandBuffer, P1, currentImage);
             vkCmdDrawIndexed(commandBuffer,
                     static_cast<uint32_t>(MK[i].indices.size()), 1, 0, 0, 0);
+        }
+        
+        for(int i = 0; i < MF.size(); i++){
+            MF[i].bind(commandBuffer);
+            DSF[i].bind(commandBuffer, P1, currentImage);
+            vkCmdDrawIndexed(commandBuffer,
+                    static_cast<uint32_t>(MF[i].indices.size()), 1, 0, 0, 0);
         }
         
 		vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(M.indices.size()), 1, 0, 0, 0);
@@ -417,6 +463,14 @@ class LabyrinthSurvival : public BaseProject {
             ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
             DSK[i].map(currentImage, &ubo, sizeof(ubo), 0);
             DSK[i].map(currentImage, &gubo, sizeof(gubo), 1);
+        }
+        
+        for(int i = 0; i < MF.size(); i++){
+            ubo.mMat = MakeWorldMatrix(FoodPos[i], FoodRot, FoodScale) * baseTr;//translate the key to locate
+            ubo.mvpMat = ViewPrj * ubo.mMat;
+            ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
+            DSF[i].map(currentImage, &ubo, sizeof(ubo), 0);
+            DSF[i].map(currentImage, &gubo, sizeof(gubo), 1);
         }
 
         for (int i = 0; i < walls.size(); i++) {
@@ -684,6 +738,7 @@ class LabyrinthSurvival : public BaseProject {
         int varNumOfFood = maxNumOfFood - minNumOfFood;
         int numOfFood = rand() % varNumOfFood;
         numOfFood += minNumOfFood;
+        effectiveNumberOfFood = numOfFood;
         //a var to represent what you are locating:
         int locatingWhat = 0;// 0 = player ; 1 = keys ; 2 = food
         int cellNumForLocation = cellNum;//cell number available for location
@@ -711,6 +766,7 @@ class LabyrinthSurvival : public BaseProject {
                                 }
                             } else if(locatingWhat == 2){//food
                                 out[i][j] = 'F';
+                                FoodPos.push_back(glm::vec3(j+0.5, 0.35, i+0.5));
                                 counterForCurrentObject++;
                                 if(counterForCurrentObject >= numOfFood){
                                     counterForCurrentObject = 0;

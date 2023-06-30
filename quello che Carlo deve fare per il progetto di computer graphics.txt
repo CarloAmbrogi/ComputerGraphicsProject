@@ -1,3 +1,4 @@
-I cuori
+Il pavimento
+Il contatore dei cuori
+La possibilità di prendere le chiavi e i cuori
 Finire di fare gli assignements
-Qualche volta un labirinto potrebbe avere delle celle irraggiungibili
