@@ -380,6 +380,7 @@ void LabyrinthSurvival::createMazeMesh(int row, int col, char **maze) {
         }
     }
     
+    /*
     //Add the floor
     counterCreatedVertex += 4;
     vPos.push_back(0.0f); vPos.push_back(downPoint); vPos.push_back(0.0f);
@@ -388,7 +389,7 @@ void LabyrinthSurvival::createMazeMesh(int row, int col, char **maze) {
     vPos.push_back(col); vPos.push_back(downPoint); vPos.push_back(row);
     vIdx.push_back(counterCreatedVertex-4); vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2);
     vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2); vIdx.push_back(counterCreatedVertex-1);
-    
+    */
     /*
     //Add the ciel
     counterCreatedVertex += 4;
