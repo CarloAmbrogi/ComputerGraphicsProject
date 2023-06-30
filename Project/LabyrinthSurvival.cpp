@@ -7,9 +7,8 @@ std::vector<SingleText> demoText = {
 
 
 // num rows and cols labyrinth
-#define NUMROW 60
-#define NUMCOL 60
-
+#define NUMROW 45
+#define NUMCOL 45
 
 // The uniform buffer object used in this example
 struct UniformBufferObject {
@@ -41,10 +40,11 @@ class LabyrinthSurvival : public BaseProject {
 
     Model M{};//Model M for the labyrinth
     DescriptorSet DS;//DescriptorSet DS for the labyrinth
+    Texture TW;//Texture for the wall
     std::vector<Model> MK;//model MK for the keys
     std::vector<DescriptorSet> DSK;//DescriptorSet DSK for the keys
-    std::vector<Model> walls;
-    std::vector<DescriptorSet> DSWalls;
+    std::vector<Model> walls;//model for the walls
+    std::vector<DescriptorSet> DSWalls;//DescriptorSet for the walls
     
     TextMaker txt;//To insert a text with the number of life
     
@@ -109,7 +109,8 @@ class LabyrinthSurvival : public BaseProject {
 					// second element : the type of element (buffer or texture)
 					// third  element : the pipeline stage where it will be used
 					{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
-					{1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS}
+					{1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS},
+                    {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_ALL_GRAPHICS}
 				  });
 
 		// Pipelines [Shader couples]
@@ -126,7 +127,7 @@ class LabyrinthSurvival : public BaseProject {
         int r = NUMROW;
         int c = NUMCOL;
         char **maze = genMaze(r, c);
-        
+                
         for (int i = 0; i < effectiveNumberOfWalls; i++) {
             Model wall;
             wall.init(this, "models/Wall.obj");
@@ -153,7 +154,20 @@ class LabyrinthSurvival : public BaseProject {
 		for(int i = 0; i < vPos.size(); i+=3) {
 				Vertex vertex{};
 				vertex.pos = {vPos[i], vPos[i+1], vPos[i+2]};
-				vertex.texCoord = {-1, -1};
+                //texCoord for the texture of the labyrinth
+                if(i % 4 == 0){
+                    vertex.texCoord = {1, 1};
+                }
+                if(i % 4 == 1){
+                    vertex.texCoord = {1, 0};
+                }
+                if(i % 4 == 2){
+                    vertex.texCoord = {0, 1};
+                }
+                if(i % 4 == 3){
+                    vertex.texCoord = {0, 0};
+                }
+                //
 				vertex.norm = {0, 1, 0};//TODO Fix the norm
 				M.vertices.push_back(vertex);
 		}
@@ -165,6 +179,8 @@ class LabyrinthSurvival : public BaseProject {
 				M.indices.push_back(vIdx[i]);
 			}
 		}
+        
+        TW.init(this, "textures/LowPolyDungeonsLite_Texture_01.png");
 
 		M.createVertexBuffer();
 		M.createIndexBuffer();
@@ -182,7 +198,8 @@ class LabyrinthSurvival : public BaseProject {
 
 		DS.init(this, &DSL1, {
 					{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-					{1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
+					{1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr},
+                    {2, TEXTURE, 0, &TW}
 				});
         
         for(int i = 0; i < effectiveNumberOfKeys; i++){
@@ -198,7 +215,8 @@ class LabyrinthSurvival : public BaseProject {
             DescriptorSet DSWall;
             DSWall.init(this, &DSL1, {
                     {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-                    {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr}
+                    {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr},
+                    {2, TEXTURE, 0, &TW}
             });
             DSWalls.push_back(DSWall);
         }
@@ -225,6 +243,8 @@ class LabyrinthSurvival : public BaseProject {
 	// Here you destroy all the Models, Texture and Desc. Set Layouts you created!
 	// You also have to destroy the pipelines
 	void localCleanup() {
+        TW.cleanup();
+        
 		M.cleanup();
         
         for(int i = 0; i < MK.size(); i++){
@@ -473,7 +493,7 @@ class LabyrinthSurvival : public BaseProject {
             out[nr-1][j] = 'W';
         }
         // Dig the labyrinth
-        const int maxIteration = 5;
+        const int maxIteration = 4;
         bool firstIteration = true;
         for(int count = 0; count < maxIteration; count++){//dig roads for some iterations
             for(int i = 0; i < nr; i++){//iterations on the row roads
@@ -761,6 +781,9 @@ class LabyrinthSurvival : public BaseProject {
                 }
             }
         }
+        std::cout << "In the labyrinth there are ";
+        std::cout << effectiveNumberOfWalls;
+        std::cout << " walls\n";
         // Return
 		return out;
 	}
