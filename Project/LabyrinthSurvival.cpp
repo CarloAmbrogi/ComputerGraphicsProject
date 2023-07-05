@@ -5,7 +5,6 @@ std::vector<SingleText> demoText = {
    {1, {"Welcome in LabyrinthSurvival", "", "", ""}, 0, 0},
 };
 
-
 // num rows and cols labyrinth
 #define NUMROW 45
 #define NUMCOL 45
@@ -396,7 +395,8 @@ class LabyrinthSurvival : public BaseProject {
 	// Here is where you update the uniforms.
 	// Very likely this will be where you will be writing the logic of your application.
 	void updateUniformBuffer(uint32_t currentImage) {
-		const float ROT_SPEED = glm::radians(120.0f);
+		const float ROT_SPEED = glm::radians(150.0f);
+        const float FAST_ROT_SPEED = glm::radians(300.0f);
 		const float MOVE_SPEED = 6.0f;
 
 		static float debounce = false;
@@ -405,10 +405,66 @@ class LabyrinthSurvival : public BaseProject {
 		float deltaT;
 		glm::vec3 m = glm::vec3(0.0f), r = glm::vec3(0.0f);
 		bool fire = false;
-		getSixAxis(deltaT, m, r, fire);
+        
+        static bool goingInstantLeft = false;//you are continuing to go to watch to the nearest 90 degree angle on your left because you have decided about this before
+        static bool goingInstantRight = false;//you are continuing to go to watch to the nearest 90 degree angle on your right because you have decided about this before
+        bool goInstantLeft = false;//you decide to watch to the nearest 90 degree angle on your left
+        bool goInstantRight = false;//you decide to watch to the nearest 90 degree angle on your right
+        
+		getSixAxis(deltaT, m, r, fire, goInstantLeft, goInstantRight);
+        
+        //check if you have to (continue to) go to watch a nearest 90 degree angle
+        if(goInstantLeft){
+            goingInstantLeft = true;
+        }
+        if(goInstantRight){
+            goingInstantRight = true;
+        }
+        if(goingInstantLeft && goingInstantRight){
+            goingInstantLeft = false;
+            goingInstantRight = false;
+        }
+        
+        if(!goingInstantLeft && !goingInstantRight){//if you are not using fast rotation to the nearest 90 degree angle
+            CamAlpha = CamAlpha - ROT_SPEED * deltaT * r.y;//manage rotation normally
+        } else {//manage fast rotation to the nearest 90 degree angle
+            float pih = 3.14159265358979f / 2.0f;//there are 4 possible direction 90 degree directions
+            float resDiv = CamAlpha / pih;
+            int resDivInt = resDiv;
+            float anglePrev = pih * resDivInt;//previous 90 degree angle
+            float angleNext = anglePrev + pih;//next 90 degree angle
+            if(resDiv < 0){
+                angleNext = pih * resDivInt;
+                anglePrev = anglePrev - pih;
+            }
+            if(CamAlpha == anglePrev){//manage if you start by a 90 degree position and you want to go to another 90 degree position on left
+                anglePrev = anglePrev - 1;
+            }
+            if(CamAlpha == angleNext){//manage if you start by a 90 degree position and you want to go to another 90 degree position on right
+                angleNext = angleNext + 1;
+            }
+            float requiredMovement = 0.0f;
+            if(goingInstantLeft){
+                requiredMovement = -1.0f;
+            }
+            if(goingInstantRight){
+                requiredMovement = 1.0f;
+            }
+            float nextCamAlpha = CamAlpha - FAST_ROT_SPEED * deltaT * requiredMovement;//where you should see after this rotation
+            if(nextCamAlpha > anglePrev && nextCamAlpha < angleNext){//rotation is ok: you can rotate normally
+                CamAlpha = nextCamAlpha;
+            } else {//you collapse to the nearest 90 degree angle and you complete the rotation
+                if(nextCamAlpha <= anglePrev){
+                    CamAlpha = anglePrev;
+                } else if(nextCamAlpha >= angleNext){
+                    CamAlpha = angleNext;
+                }
+                goingInstantLeft = false;
+                goingInstantRight = false;
+            }
+        }
 
-		CamAlpha = CamAlpha - ROT_SPEED * deltaT * r.y;
-		CamBeta  = CamBeta  - ROT_SPEED * deltaT * r.x;
+        CamBeta  = CamBeta - ROT_SPEED * deltaT * r.x;
 		CamBeta  =  CamBeta < glm::radians(-90.0f) ? glm::radians(-90.0f) :
 				   (CamBeta > glm::radians( 90.0f) ? glm::radians( 90.0f) : CamBeta);
 

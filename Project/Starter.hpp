@@ -1727,10 +1727,10 @@ std::cout << NAr << " " << poolSizes.size() << "\n";
 					m.z -= state.axes[GLFW_GAMEPAD_AXIS_LEFT_Y];
 				}
 				if(fabs(state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER]) > deadZone) {
-					m.y -= state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER];
+					m.y -= state.axes[GLFW_GAMEPAD_AXIS_LEFT_TRIGGER];//you can't go up
 				}
 				if(fabs(state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER]) > deadZone) {
-					m.y += state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER];
+					m.y += state.axes[GLFW_GAMEPAD_AXIS_RIGHT_TRIGGER];//you can't go up
 				}
 
 				if(fabs(state.axes[GLFW_GAMEPAD_AXIS_RIGHT_X]) > deadZone) {
@@ -1739,8 +1739,8 @@ std::cout << NAr << " " << poolSizes.size() << "\n";
 				if(fabs(state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y]) > deadZone) {
 					r.x += state.axes[GLFW_GAMEPAD_AXIS_RIGHT_Y];
 				}
-				r.z += state.buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER] ? 1.0f : 0.0f;
-				r.z -= state.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER] ? 1.0f : 0.0f;
+                //r.z += state.buttons[GLFW_GAMEPAD_BUTTON_LEFT_BUMPER] ? 1.0f : 0.0f;//you can't rotate the camera
+                //r.z -= state.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER] ? 1.0f : 0.0f;//you can't rotate the camera
 				fire = fire | (bool)state.buttons[GLFW_GAMEPAD_BUTTON_A] | (bool)state.buttons[GLFW_GAMEPAD_BUTTON_B];
 			}
 		}
@@ -1771,7 +1771,7 @@ std::cout << NAr << " " << poolSizes.size() << "\n";
 			}
 	}
 		
-	void getSixAxis(float &deltaT, glm::vec3 &m, glm::vec3 &r, bool &fire) {
+	void getSixAxis(float &deltaT, glm::vec3 &m, glm::vec3 &r, bool &fire, bool &instantLeft, bool &instantRight) {
 		static auto startTime = std::chrono::high_resolution_clock::now();
 		static float lastTime = 0.0f;
 		
@@ -1808,10 +1808,10 @@ std::cout << NAr << " " << poolSizes.size() << "\n";
 			r.x = 1.0f;
 		}
 		if(glfwGetKey(window, GLFW_KEY_Q)) {
-			r.z = 1.0f;
+            //r.z = 1.0f;//you can't rotate the camera
 		}
 		if(glfwGetKey(window, GLFW_KEY_E)) {
-			r.z = -1.0f;
+            //r.z = -1.0f;//you can't rotate the camera
 		}
 
 		if(glfwGetKey(window, GLFW_KEY_A)) {
@@ -1827,13 +1827,17 @@ std::cout << NAr << " " << poolSizes.size() << "\n";
 			m.z = 1.0f;
 		}
 		if(glfwGetKey(window, GLFW_KEY_R)) {
-			m.y = 1.0f;
+            m.y = 1.0f;//you can't go up
 		}
 		if(glfwGetKey(window, GLFW_KEY_F)) {
-			m.y = -1.0f;
+            m.y = -1.0f;//you can't go down
 		}
 		
 		fire = glfwGetKey(window, GLFW_KEY_SPACE);
+        
+        instantLeft = glfwGetKey(window, GLFW_KEY_J);//watch to the nearest 90 degree angle on your left
+        instantRight = glfwGetKey(window, GLFW_KEY_L);//watch to the nearest 90 degree angle on your right
+        
 		handleGamePad(GLFW_JOYSTICK_1,m,r,fire);
 		handleGamePad(GLFW_JOYSTICK_2,m,r,fire);
 		handleGamePad(GLFW_JOYSTICK_3,m,r,fire);
