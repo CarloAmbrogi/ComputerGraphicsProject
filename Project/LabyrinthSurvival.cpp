@@ -137,9 +137,8 @@ class LabyrinthSurvival : public BaseProject {
 		// Pipelines [Shader couples]
 		// The last array, is a vector of pointer to the layouts of the sets that will
 		// be used in this pipeline. The first element will be set 0, and so on..
-        //std::cout << "P1\n";
+        std::cout << "P1\n";
 		P1.init(this, "shaders/PhongVert.spv", "shaders/PhongFrag.spv", {&DSL1});
-        //std::cout << "P1.set\n";
 		P1.setAdvancedFeatures(VK_COMPARE_OP_LESS, VK_POLYGON_MODE_FILL,
  								    VK_CULL_MODE_NONE, false);
 
@@ -148,7 +147,7 @@ class LabyrinthSurvival : public BaseProject {
         int r = NUMROW;
         int c = NUMCOL;
         char **maze = genMaze(r, c);
-                
+        
         for (int i = 0; i < effectiveNumberOfWalls; i++) {
             Model wall;
             wall.init(this, "models/Wall.obj");//model of a wall
@@ -544,6 +543,8 @@ class LabyrinthSurvival : public BaseProject {
         // D Door
         // B Boss fight
         // F Food
+        static int numberOfTentatives = 0;
+        numberOfTentatives++;
 		char **out = (char **)calloc(nr, sizeof(char *));
 		for(int i = 0; i < nr; i++) {
 			out[i] = (char *)malloc(nc+1);
@@ -553,6 +554,10 @@ class LabyrinthSurvival : public BaseProject {
 			out[i][nc] = 0;
 		}
 		srand (time(NULL));
+        const int maxNumberOfTentatives = 7;//max number of tentatives to try to generate the labyrinth
+        if(numberOfTentatives > maxNumberOfTentatives){
+            srand(1);//this is a default labyrinth in case the generation of the labyrinth take many tentatives
+        }
         // Select randomly where to locate the boss fight
         const int xLenghtBossFight = 7;
         const int yLenghtBossFight = 10;
@@ -776,6 +781,7 @@ class LabyrinthSurvival : public BaseProject {
         }
         const int minCellNum = 25;
         if(cellNum < minCellNum){
+            free(out);
             return genMaze(nr, nc);
         }
         // Locate the player, the keys and the food

@@ -353,7 +353,6 @@ protected:
 
         glfwSetWindowUserPointer(window, this);
         glfwSetFramebufferSizeCallback(window, framebufferResizeCallback);
-
     }
 
 	virtual void onWindowResize(int w, int h) = 0;
@@ -363,32 +362,32 @@ protected:
 						(glfwGetWindowUserPointer(window));
 		app->framebufferResized = true;
 		app->onWindowResize(width, height);
-	} 
+	}
 	
 
 	virtual void localInit() = 0;
 	virtual void pipelinesAndDescriptorSetsInit() = 0;
 
     void initVulkan() {
-		createInstance();				
-		setupDebugMessenger();			
-		createSurface();				
-		pickPhysicalDevice();			
-		createLogicalDevice();			
-		createSwapChain();				
-		createImageViews();				
-		createRenderPass();			
-		createCommandPool();			
+		createInstance();
+		setupDebugMessenger();
+		createSurface();
+		pickPhysicalDevice();
+		createLogicalDevice();
+		createSwapChain();
+		createImageViews();
+		createRenderPass();
+		createCommandPool();
 		createColorResources();
-		createDepthResources();			
-		createFramebuffers();			
-		createDescriptorPool();			
+		createDepthResources();
+		createFramebuffers();
+		createDescriptorPool();
 
 		localInit();
 		pipelinesAndDescriptorSetsInit();
 
-		createCommandBuffers();			
-		createSyncObjects();			 
+		createCommandBuffers();
+		createSyncObjects();
     }
 
     void createInstance() {
@@ -1615,7 +1614,7 @@ std::cout << NAr << " " << poolSizes.size() << "\n";
 		if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR ||
 			framebufferResized) {
             framebufferResized = false;
-            recreateSwapChain();
+            //recreateSwapChain();//commenting this row, the window resising works
         } else if (result != VK_SUCCESS) {
             throw std::runtime_error("failed to present swap chain image!");
         }
@@ -1648,10 +1647,11 @@ std::cout << NAr << " " << poolSizes.size() << "\n";
 		createDepthResources();
 		createFramebuffers();
 		createDescriptorPool();
-
+        
 		pipelinesAndDescriptorSetsInit();
-
+        
 		createCommandBuffers();
+        
 	}
 
 	void cleanupSwapChain() {
