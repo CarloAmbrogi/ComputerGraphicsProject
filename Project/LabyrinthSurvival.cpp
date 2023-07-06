@@ -1,8 +1,17 @@
 #include "Starter.hpp"
 #include "TextMaker.hpp"
 
-std::vector<SingleText> demoText = {
-   {1, {"Welcome in LabyrinthSurvival", "", "", ""}, 0, 0},
+std::vector<SingleText> textToVisualize = {
+    {1, {"Welcome in LabyrinthSurvival", "", "", ""}, 0, 0},//0
+    {1, {"There are different keys to take", "", "", ""}, 0, 0},//1
+    {1, {"There are other 5 keys to take", "", "", ""}, 0, 0},//2
+    {1, {"There are other 4 keys to take", "", "", ""}, 0, 0},//3
+    {1, {"There are other 3 keys to take", "", "", ""}, 0, 0},//4
+    {1, {"There are other 2 keys to take", "", "", ""}, 0, 0},//5
+    {1, {"There is another 1 key to take", "", "", ""}, 0, 0},//6
+    {1, {"Now you can open the gate", "", "", ""}, 0, 0},//7
+    {1, {"Labyrinth completed", "", "", ""}, 0, 0},//8
+    {1, {"Labyrinth failed", "", "", ""}, 0, 0},//9
 };
 
 // num rows and cols labyrinth
@@ -49,21 +58,31 @@ class LabyrinthSurvival : public BaseProject {
     std::vector<DescriptorSet> DSW;//DescriptorSet for the walls
     std::vector<DescriptorSet> DSG;//DescriptorSet for the ground
     
-    TextMaker txt;//To insert a text with the number of life
+    TextMaker txt;//To insert a text in the UI of this application
     
+    // Variables concerning the generated labyrinth
     bool labyrinthShape[NUMROW][NUMCOL];//to keep where there is a wall in the labyrinth
     bool labyrinthShapeInitialized = false;//if the labyrinth is initialized
     int effectiveNumberOfKeys = 0;//this var will be set with the number of keys in the labyrinth (after labyrinth generation)
     int effectiveNumberOfWalls = 0;//this var will be set with the number of walls in the labyrinth (after labyrinth generation)
     int effectiveNumberOfFood = 0;//this var will be set with the number of food in the labyrinth (after labyrinth generation)
     int effectiveNumberOfGround = 0;//this var will be set with the number of ground in the labyrinth (after labyrinth generation)
+    std::vector<int> xKeyPos;//x position of the keys in the labyrinth
+    std::vector<int> yKeyPos;//y position of the keys in the labyrinth
+    std::vector<int> xFoodPos;//x position of the food in the labyrinth
+    std::vector<int> yFoodPos;//y position of the food in the labyrinth
+    
+    // Variables useful when playing
+    std::vector<bool> tookKey;//if you took each of the keys
+    std::vector<bool> tookFood;//if you took each of the keys
     
 	// Other application parameters
 	glm::vec3 CamPos = glm::vec3(0.5, 0.5, 10.0);//camera position
     glm::vec3 CamPosPrec = glm::vec3(0.5, 0.5, 10.0);//remember prew position to check if you are not overriding a wall
 	float CamAlpha = 0.0f;
 	float CamBeta = 0.0f;
-	float Ar;
+	float Ar;//aspect ratio
+    glm::vec3 notVisiblePosition = glm::vec3(-1, -1, -1);//a position to place an object witch disappear
     
     //parameters for the key pos, rot and scale
     std::vector<glm::vec3> keyPos;
@@ -90,11 +109,11 @@ class LabyrinthSurvival : public BaseProject {
                        glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                        glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
     glm::vec3 groundScale = glm::vec3(0.25f);
-
+    
+    //vPos and vIdx for the model for the labyrinth
 	std::vector<float> vPos;
 	std::vector<int> vIdx;
-		
-	
+    
 	// Here you set the main application parameters
 	void setWindowParameters() {
 		// window size, titile and initial background
@@ -229,7 +248,7 @@ class LabyrinthSurvival : public BaseProject {
 
 		destroyMaze(r, c, maze);
         
-        txt.init(this, &demoText);
+        txt.init(this, &textToVisualize);
 	}
 	
 	// Here you create your pipelines and Descriptor Sets!
@@ -475,18 +494,6 @@ class LabyrinthSurvival : public BaseProject {
 		CamPos = CamPos + MOVE_SPEED * m.y * glm::vec3(0,1,0) * deltaT;
 		CamPos = CamPos + MOVE_SPEED * m.z * uz * deltaT;
         
-        /*
-        //print CamPos
-        std::cout << CamPos.x;
-        std::cout << " ";
-        std::cout << CamPos.y;
-        std::cout << " ";
-        std::cout << CamPos.z;
-        std::cout << " ";
-        std::cout << CamAlpha;
-        std::cout << "\n";
-        */
-        
         //You can't go over a wall
         if(labyrinthShapeInitialized){
             const float minDistToWalls = 0.15f;
@@ -528,7 +535,32 @@ class LabyrinthSurvival : public BaseProject {
                 }
             }
         }
+        
+        //your position in the labyrinth
+        int x = CamPos.x;
+        int y = CamPos.z;
+        
+        // In case you take a key
+        for(int i = 0; i < effectiveNumberOfKeys; i++){
+            if(x == xKeyPos[i] && y == yKeyPos[i] && tookKey[i] == false){
+                std::cout << "You took a key\n";
+                tookKey[i] = true;
+                keyPos[i] = notVisiblePosition;
+                //implement here that the text that changes when you take a key
+            }
+        }
+        
+        // In case you take a food
+        for(int i = 0; i < effectiveNumberOfFood; i++){
+            if(x == xFoodPos[i] && y == yFoodPos[i] && tookFood[i] == false){
+                std::cout << "You took a food\n";
+                tookFood[i] = true;
+                foodPos[i] = notVisiblePosition;
+                //implement here the text that you recover some life when you take a food
+            }
+        }
 		
+        // close the application
 		if(glfwGetKey(window, GLFW_KEY_ESCAPE)) {
 			glfwSetWindowShouldClose(window, GL_TRUE);
 		}
@@ -875,6 +907,9 @@ class LabyrinthSurvival : public BaseProject {
                             } else if(locatingWhat == 1){//keys
                                 out[i][j] = 'K';
                                 keyPos.push_back(glm::vec3(j+0.5, 0.5, i+0.5));
+                                xKeyPos.push_back(j);
+                                yKeyPos.push_back(i);
+                                tookKey.push_back(false);
                                 counterForCurrentObject++;
                                 if(counterForCurrentObject >= numOfKeys){
                                     counterForCurrentObject = 0;
@@ -883,6 +918,9 @@ class LabyrinthSurvival : public BaseProject {
                             } else if(locatingWhat == 2){//food
                                 out[i][j] = 'F';
                                 foodPos.push_back(glm::vec3(j+0.5, 0.35, i+0.5));
+                                xFoodPos.push_back(j);
+                                yFoodPos.push_back(i);
+                                tookFood.push_back(false);
                                 counterForCurrentObject++;
                                 if(counterForCurrentObject >= numOfFood){
                                     counterForCurrentObject = 0;
