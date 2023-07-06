@@ -26,7 +26,7 @@ struct UniformBufferObject {
 };
 
 struct GlobalUniformBufferObject {
-	alignas(16) glm::vec3 lightDir;
+	alignas(16) glm::vec3 lightPos;
 	alignas(16) glm::vec4 lightColor;
 	alignas(16) glm::vec3 eyePos;
 };
@@ -111,8 +111,9 @@ class LabyrinthSurvival : public BaseProject {
     glm::vec3 groundScale = glm::vec3(0.25f);
     
     //vPos and vIdx for the model for the labyrinth
-	std::vector<float> vPos;
-	std::vector<int> vIdx;
+	std::vector<float> vPos;//position of the vertices
+    std::vector<float> vNorms;//for each vertex the 3 coordinates of the norm
+	std::vector<int> vIdx;//vertices for triangles
     
 	// Here you set the main application parameters
 	void setWindowParameters() {
@@ -208,24 +209,24 @@ class LabyrinthSurvival : public BaseProject {
 
         M.BP = this;
 		for(int i = 0; i < vPos.size(); i+=3) {
-				Vertex vertex{};
-				vertex.pos = {vPos[i], vPos[i+1], vPos[i+2]};
-                //texCoord for the texture of the labyrinth
-                if(i % 4 == 0){
-                    vertex.texCoord = {1, 1};
-                }
-                if(i % 4 == 1){
-                    vertex.texCoord = {0, 0};
-                }
-                if(i % 4 == 2){
-                    vertex.texCoord = {0, 1};
-                }
-                if(i % 4 == 3){
-                    vertex.texCoord = {1, 0};
-                }
-                //
-				vertex.norm = {0, 1, 0};//TODO Fix the norm
-				M.vertices.push_back(vertex);
+            Vertex vertex{};
+            vertex.pos = {vPos[i], vPos[i+1], vPos[i+2]};
+            vertex.norm = {vNorms[i], vNorms[i+1], vNorms[i+2]};
+            //texCoord for the texture of the labyrinth
+            if(i % 4 == 0){
+                vertex.texCoord = {1, 1};
+            }
+            if(i % 4 == 1){
+                vertex.texCoord = {0, 0};
+            }
+            if(i % 4 == 2){
+                vertex.texCoord = {0, 1};
+            }
+            if(i % 4 == 3){
+                vertex.texCoord = {1, 0};
+            }
+            //
+            M.vertices.push_back(vertex);
 		}
 		for(int i = 0; i < vIdx.size(); i++) {
 			if((vIdx[i] < 0) || (vIdx[i] >= M.vertices.size())) {
@@ -580,9 +581,9 @@ class LabyrinthSurvival : public BaseProject {
 
 		// updates global uniforms
 		GlobalUniformBufferObject gubo{};
-		gubo.lightDir = glm::vec3(cos(glm::radians(135.0f))*cos(glm::radians(30.0f)), sin(glm::radians(135.0f)), sin(glm::radians(30.0f)));
+        gubo.lightPos = CamPos; + glm::vec3(0.0f, 1.0f, 0.0f);
 		gubo.lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
-		gubo.eyePos = glm::vec3(100.0, 100.0, 100.0);
+		gubo.eyePos = CamPos;
         
         ubo.mMat = baseTr;
         ubo.mvpMat = ViewPrj * ubo.mMat;

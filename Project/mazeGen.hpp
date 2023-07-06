@@ -9,13 +9,17 @@ float upPoint = 4.0f;
 int counterCreatedVertex = 0;
 
 //Vars used when draving the labyrinth; | or - shaped walls to be drawn
+//walls to draw
 bool rowsToDraw[BIGNUM][BIGNUM];
 bool colsToDraw[BIGNUM][BIGNUM];
+//direction of the walls (left or right for | walls and up or down for - walls
+float rowsWallsDir[BIGNUM][BIGNUM];
+float colsWallsDir[BIGNUM][BIGNUM];
 
-void colsSequence(int i, int j, int row, int col, std::vector<float> &vPos, std::vector<int> &vIdx, bool keepVertex, bool proposeGrowingDirection);
+void colsSequence(int i, int j, int row, int col, std::vector<float> &vPos, std::vector<float> &vNorms, std::vector<int> &vIdx, bool keepVertex, bool proposeGrowingDirection);
 
 //Draw the wall following the perimeter; starting with a | wall
-void rowsSequence(int i, int j, int row, int col, std::vector<float> &vPos, std::vector<int> &vIdx, bool keepVertex, bool proposeGrowingDirection){
+void rowsSequence(int i, int j, int row, int col, std::vector<float> &vPos, std::vector<float> &vNorms, std::vector<int> &vIdx, bool keepVertex, bool proposeGrowingDirection){
     //Find the place to start drawing the wall
     int colNumber = i;
     int starting = j;
@@ -67,15 +71,20 @@ void rowsSequence(int i, int j, int row, int col, std::vector<float> &vPos, std:
     }
     //Draw really the wall
     counterCreatedVertex += 4;
+    keepVertex = false;//new change in this algorithm: the vertex now won't be keeped in every case because we have to create the norm
     if(keepVertex == true){
         counterCreatedVertex -= 2;
     }
     if(keepVertex == false){
         vPos.push_back(colNumber); vPos.push_back(downPoint); vPos.push_back(startingPoint);
+        vNorms.push_back(rowsWallsDir[i][j]); vNorms.push_back(0); vNorms.push_back(0);
         vPos.push_back(colNumber); vPos.push_back(upPoint); vPos.push_back(startingPoint);
+        vNorms.push_back(rowsWallsDir[i][j]); vNorms.push_back(0); vNorms.push_back(0);
     }
     vPos.push_back(colNumber); vPos.push_back(downPoint); vPos.push_back(finalPoint);
+    vNorms.push_back(rowsWallsDir[i][j]); vNorms.push_back(0); vNorms.push_back(0);
     vPos.push_back(colNumber); vPos.push_back(upPoint); vPos.push_back(finalPoint);
+    vNorms.push_back(rowsWallsDir[i][j]); vNorms.push_back(0); vNorms.push_back(0);
     vIdx.push_back(counterCreatedVertex-4); vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2);
     vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2); vIdx.push_back(counterCreatedVertex-1);
     //Find a next consecutive wall -
@@ -85,22 +94,22 @@ void rowsSequence(int i, int j, int row, int col, std::vector<float> &vPos, std:
     }
     if(colNumber > 0 && colNumber <= col){
         if(colsToDraw[guardorowNumber][colNumber-1] == true && colsToDraw[guardorowNumber][colNumber] == false){
-            colsSequence(guardorowNumber,colNumber-1,row,col,vPos,vIdx, true, false);
+            colsSequence(guardorowNumber,colNumber-1,row,col,vPos,vNorms,vIdx, true, false);
             return;
         } else if(colsToDraw[guardorowNumber][colNumber-1] == false && colsToDraw[guardorowNumber][colNumber] == true){
-            colsSequence(guardorowNumber,colNumber,row,col,vPos,vIdx, true, true);
+            colsSequence(guardorowNumber,colNumber,row,col,vPos,vNorms,vIdx, true, true);
             return;
         }
     }
     if(colNumber == 0){
         if(colsToDraw[guardorowNumber][colNumber] == true){
-            colsSequence(guardorowNumber,colNumber,row,col,vPos,vIdx, true, true);
+            colsSequence(guardorowNumber,colNumber,row,col,vPos,vNorms,vIdx, true, true);
             return;
         }
     }
     if(colNumber == col+1){
         if(colsToDraw[guardorowNumber][colNumber-1] == true){
-            colsSequence(guardorowNumber,colNumber-1,row,col,vPos,vIdx, true, false);
+            colsSequence(guardorowNumber,colNumber-1,row,col,vPos,vNorms,vIdx, true, false);
             return;
         }
     }
@@ -108,7 +117,7 @@ void rowsSequence(int i, int j, int row, int col, std::vector<float> &vPos, std:
 }
 
 //Draw the wall following the perimeter; starting with a - wall
-void colsSequence(int i, int j, int row, int col, std::vector<float> &vPos, std::vector<int> &vIdx, bool keepVertex, bool proposeGrowingDirection){
+void colsSequence(int i, int j, int row, int col, std::vector<float> &vPos, std::vector<float> &vNorms, std::vector<int> &vIdx, bool keepVertex, bool proposeGrowingDirection){
     //Find the place to start drawing the wall
     int rowNumber = i;
     int starting = j;
@@ -160,15 +169,20 @@ void colsSequence(int i, int j, int row, int col, std::vector<float> &vPos, std:
     }
     //Draw really the wall
     counterCreatedVertex += 4;
+    keepVertex = false;//new change in this algorithm: the vertex now won't be keeped in every case because we have to create the norm
     if(keepVertex == true){
         counterCreatedVertex -= 2;
     }
     if(keepVertex == false){
         vPos.push_back(startingPoint); vPos.push_back(downPoint); vPos.push_back(rowNumber);
+        vNorms.push_back(0); vNorms.push_back(0); vNorms.push_back(colsWallsDir[i][j]);
         vPos.push_back(startingPoint); vPos.push_back(upPoint); vPos.push_back(rowNumber);
+        vNorms.push_back(0); vNorms.push_back(0); vNorms.push_back(colsWallsDir[i][j]);
     }
     vPos.push_back(finalPoint); vPos.push_back(downPoint); vPos.push_back(rowNumber);
+    vNorms.push_back(0); vNorms.push_back(0); vNorms.push_back(colsWallsDir[i][j]);
     vPos.push_back(finalPoint); vPos.push_back(upPoint); vPos.push_back(rowNumber);
+    vNorms.push_back(0); vNorms.push_back(0); vNorms.push_back(colsWallsDir[i][j]);
     vIdx.push_back(counterCreatedVertex-4); vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2);
     vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2); vIdx.push_back(counterCreatedVertex-1);
     //Find a next consecutive wall |
@@ -178,22 +192,22 @@ void colsSequence(int i, int j, int row, int col, std::vector<float> &vPos, std:
     }
     if(rowNumber > 0 && rowNumber <= row){
         if(rowsToDraw[guardocolNumber][rowNumber-1] == true && rowsToDraw[guardocolNumber][rowNumber] == false){
-            rowsSequence(guardocolNumber,rowNumber-1,row,col,vPos,vIdx, true, false);
+            rowsSequence(guardocolNumber,rowNumber-1,row,col,vPos,vNorms,vIdx, true, false);
             return;
         } else if(rowsToDraw[guardocolNumber][rowNumber-1] == false && rowsToDraw[guardocolNumber][rowNumber] == true){
-            rowsSequence(guardocolNumber,rowNumber,row,col,vPos,vIdx, true, true);
+            rowsSequence(guardocolNumber,rowNumber,row,col,vPos,vNorms,vIdx, true, true);
             return;
         }
     }
     if(rowNumber == 0){
         if(rowsToDraw[guardocolNumber][rowNumber] == true){
-            rowsSequence(guardocolNumber,rowNumber,row,col,vPos,vIdx, true, true);
+            rowsSequence(guardocolNumber,rowNumber,row,col,vPos,vNorms,vIdx, true, true);
             return;
         }
     }
     if(rowNumber == col+1){
         if(rowsToDraw[guardocolNumber][rowNumber-1] == true){
-            rowsSequence(guardocolNumber,rowNumber-1,row,col,vPos,vIdx, true, false);
+            rowsSequence(guardocolNumber,rowNumber-1,row,col,vPos,vNorms,vIdx, true, false);
             return;
         }
     }
@@ -224,30 +238,38 @@ void LabyrinthSurvival::createMazeMesh(int row, int col, char **maze) {
                 if(j-1 >= 0){
                     if(maze[i][j-1] != '#'){
                         rows[j][i] = true;//wall in left
+                        rowsWallsDir[j][i] = -1;//left
                     }
                 } else {
                     rows[j][i] = true;//wall in left
+                    rowsWallsDir[j][i] = -1;//left
                 }
                 if(j+1 < col){
                     if(maze[i][j+1] != '#'){
                         rows[j+1][i] = true;//wall in right
+                        rowsWallsDir[j+1][i] = 1;//right
                     }
                 } else {
                     rows[j+1][i] = true;//wall in right
+                    rowsWallsDir[j+1][i] = 1;//right
                 }
                 if(i-1 >= 0){
                     if(maze[i-1][j] != '#'){
                         cols[i][j] = true;//wall in forward
+                        colsWallsDir[i][j] = -1;//forward
                     }
                 } else {
                     cols[i][j] = true;//wall in forward
+                    colsWallsDir[i][j] = -1;//forward
                 }
                 if(i+1 < row){
                     if(maze[i+1][j] != '#'){
                         cols[i+1][j] = true;//wall in backward
+                        colsWallsDir[i+1][j] = 1;//backward
                     }
                 } else {
                     cols[i+1][j] = true;//wall in backward
+                    colsWallsDir[i+1][j] = 1;//backward
                 }
             }
         }
@@ -361,7 +383,7 @@ void LabyrinthSurvival::createMazeMesh(int row, int col, char **maze) {
             for(int i = 0; i < col+1; i++){
                 for(int j = 0; j < row; j++){
                     if(rowsToDraw[i][j] == true){
-                        rowsSequence(i,j,row,col,vPos,vIdx, false, true);//Draw a wall sequence starting with this | wall
+                        rowsSequence(i,j,row,col,vPos,vNorms,vIdx, false, true);//Draw a wall sequence starting with this | wall
                     }
                 }
             }
@@ -371,7 +393,7 @@ void LabyrinthSurvival::createMazeMesh(int row, int col, char **maze) {
             for(int i = 0; i < row+1; i++){
                 for(int j = 0; j < col; j++){
                     if(colsToDraw[i][j] == true){
-                        colsSequence(i,j,row,col,vPos,vIdx, false, true);//Draw a wall sequence starting with this - wall
+                        colsSequence(i,j,row,col,vPos,vNorms,vIdx, false, true);//Draw a wall sequence starting with this - wall
                     }
                 }
             }
@@ -384,9 +406,13 @@ void LabyrinthSurvival::createMazeMesh(int row, int col, char **maze) {
     //Add the floor
     counterCreatedVertex += 4;
     vPos.push_back(0.0f); vPos.push_back(downPoint); vPos.push_back(0.0f);
+    vNorms.push_back(0); vNorms.push_back(-1); vNorms.push_back(0);
     vPos.push_back(col); vPos.push_back(downPoint); vPos.push_back(0.0f);
+    vNorms.push_back(0); vNorms.push_back(-1); vNorms.push_back(0);
     vPos.push_back(0.0f); vPos.push_back(downPoint); vPos.push_back(row);
+    vNorms.push_back(0); vNorms.push_back(-1); vNorms.push_back(0);
     vPos.push_back(col); vPos.push_back(downPoint); vPos.push_back(row);
+    vNorms.push_back(0); vNorms.push_back(-1); vNorms.push_back(0);
     vIdx.push_back(counterCreatedVertex-4); vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2);
     vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2); vIdx.push_back(counterCreatedVertex-1);
     */
@@ -394,9 +420,13 @@ void LabyrinthSurvival::createMazeMesh(int row, int col, char **maze) {
     //Add the ciel
     counterCreatedVertex += 4;
     vPos.push_back(0.0f); vPos.push_back(upWallPoint); vPos.push_back(0.0f);
+    vNorms.push_back(0); vNorms.push_back(1); vNorms.push_back(0);
     vPos.push_back(col); vPos.push_back(upWallPoint); vPos.push_back(0.0f);
+    vNorms.push_back(0); vNorms.push_back(1); vNorms.push_back(0);
     vPos.push_back(0.0f); vPos.push_back(upWallPoint); vPos.push_back(row);
+    vNorms.push_back(0); vNorms.push_back(1); vNorms.push_back(0);
     vPos.push_back(col); vPos.push_back(upWallPoint); vPos.push_back(row);
+    vNorms.push_back(0); vNorms.push_back(1); vNorms.push_back(0);
     vIdx.push_back(counterCreatedVertex-4); vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2);
     vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2); vIdx.push_back(counterCreatedVertex-1);
     */
