@@ -9,7 +9,7 @@ std::vector<SingleText> textToVisualize = {
     {1, {"There are other 3 keys to take", "", "", ""}, 0, 0},//4
     {1, {"There are other 2 keys to take", "", "", ""}, 0, 0},//5
     {1, {"There is another 1 key to take", "", "", ""}, 0, 0},//6
-    {1, {"Now you can open the gate", "", "", ""}, 0, 0},//7
+    {1, {"Now you can open the door", "", "", ""}, 0, 0},//7
     {1, {"Labyrinth completed", "", "", ""}, 0, 0},//8
     {1, {"Labyrinth failed", "", "", ""}, 0, 0},//9
 };
@@ -26,7 +26,7 @@ struct UniformBufferObject {
 };
 
 struct GlobalUniformBufferObject {
-	alignas(16) glm::vec3 lightPos;
+	alignas(16) glm::vec3 lightPos[2];
 	alignas(16) glm::vec4 lightColor;
 	alignas(16) glm::vec3 eyePos;
 };
@@ -48,20 +48,23 @@ class LabyrinthSurvival : public BaseProject {
 
     Model M{};//Model M for the labyrinth
     DescriptorSet DS;//DescriptorSet DS for the labyrinth
-    Texture TL, TW, TG, TK, TF;//Texture for the labyrinth, for the wall, the ground, for the keys and for the food
+    Texture TL, TW, TD, TG, TK, TF;//Texture for the labyrinth, for the wall, the door, the ground, for the keys and for the food
     std::vector<Model> MK;//model MK for the keys
     std::vector<Model> MF;//model MF for the food
     std::vector<DescriptorSet> DSK;//DescriptorSet DSK for the keys
     std::vector<DescriptorSet> DSF;//DescriptorSet DSF for the food
     std::vector<Model> MW;//model MW for the walls
+    Model MD;//model MD for the door
     std::vector<Model> MG;//model MW for the ground
     std::vector<DescriptorSet> DSW;//DescriptorSet for the walls
+    DescriptorSet DSD;//DescriptorSet for the door
     std::vector<DescriptorSet> DSG;//DescriptorSet for the ground
     
     TextMaker txt;//To insert a text in the UI of this application
     
     // Variables concerning the generated labyrinth
     bool labyrinthShape[NUMROW][NUMCOL];//to keep where there is a wall in the labyrinth
+    bool reducedLabyrinthShape[NUMROW][NUMCOL];//to keep where there is a wall or the door in the labyrinth
     bool labyrinthShapeInitialized = false;//if the labyrinth is initialized
     int effectiveNumberOfKeys = 0;//this var will be set with the number of keys in the labyrinth (after labyrinth generation)
     int effectiveNumberOfWalls = 0;//this var will be set with the number of walls in the labyrinth (after labyrinth generation)
@@ -102,6 +105,11 @@ class LabyrinthSurvival : public BaseProject {
     std::vector<glm::vec3> wallPos;
     std::vector<glm::quat> wallRots;
     glm::vec3 wallScale = glm::vec3(0.25f);
+    
+    //parameters for the door pos, rot and scale
+    glm::vec3 doorPos;
+    glm::quat doorRot;
+    glm::vec3 doorScale = glm::vec3(0.25f);
     
     //parameters for the ground pos, rot and scale
     std::vector<glm::vec3> groundPos;
@@ -173,6 +181,8 @@ class LabyrinthSurvival : public BaseProject {
             MW.push_back(wall);
         }
         
+        MD.init(this, "models/Wall.obj");//model of a gate
+        
         for (int i = 0; i < effectiveNumberOfGround; i++) {
             Model ground;
             //model of a ground: for each pice of ground, initializate randomly one of the two model of a ground
@@ -239,6 +249,7 @@ class LabyrinthSurvival : public BaseProject {
         
         TL.init(this, "textures/IMG_9647.png");
         TW.init(this, "textures/LowPolyDungeonsLite_Texture_01.png");
+        TD.init(this, "textures/door.png");
         TG.init(this, "textures/ground.png");
         TK.init(this, "textures/key.png");
         TF.init(this, "textures/food.png");
@@ -293,6 +304,12 @@ class LabyrinthSurvival : public BaseProject {
             DSW.push_back(DSWall);
         }
         
+        DSD.init(this, &DSL1, {
+                {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+                {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr},
+                {2, TEXTURE, 0, &TD}
+        });
+        
         for (Model ground : MG) {
             DescriptorSet DSGround;
             DSGround.init(this, &DSL1, {
@@ -320,6 +337,7 @@ class LabyrinthSurvival : public BaseProject {
         for (DescriptorSet ds : DSW) {
             ds.cleanup();
         }
+        DSD.cleanup();
         for (DescriptorSet ds : DSG) {
             ds.cleanup();
         }
@@ -332,6 +350,7 @@ class LabyrinthSurvival : public BaseProject {
 	void localCleanup() {
         TL.cleanup();
         TW.cleanup();
+        TD.cleanup();
         TG.cleanup();
         TK.cleanup();
         TF.cleanup();
@@ -344,6 +363,7 @@ class LabyrinthSurvival : public BaseProject {
         for (Model wall : MW) {
             wall.cleanup();
         }
+        MD.cleanup();
         for (Model ground : MG) {
             ground.cleanup();
         }
@@ -391,6 +411,10 @@ class LabyrinthSurvival : public BaseProject {
             DSW[i].bind(commandBuffer, P1, currentImage);
             vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MW[i].indices.size()), 1, 0, 0, 0);
         }
+        
+        MD.bind(commandBuffer);
+        DSD.bind(commandBuffer, P1, currentImage);
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MD.indices.size()), 1, 0, 0, 0);
         
         for (int i = 0; i < MG.size(); i++) {
             MG[i].bind(commandBuffer);
@@ -535,6 +559,20 @@ class LabyrinthSurvival : public BaseProject {
                     CamAlpha = CamAlphaPrec;//recover the true direction you was going
                 }
             }
+            //you can't pass through the door if there are other keys to take in the labyrinth
+            if(reducedLabyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || reducedLabyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x-minDistToWalls)] == true || reducedLabyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || reducedLabyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x-minDistToWalls)] == true){
+                if(CamPos.x <= doorPos.x + minDistToWalls){//if you are also trying to pass through the door going left (into the room)
+                    bool youHaveTakenAllTheKeys = true;//check if you have taken all the keys
+                    for(int i = 0; i < effectiveNumberOfKeys; i++){
+                        if(!tookKey[i]){
+                            youHaveTakenAllTheKeys = false;
+                        }
+                    }
+                    if(!youHaveTakenAllTheKeys){//if you have not taken all the keys
+                        CamPos = CamPosPrec;//return to the previous position
+                    }
+                }
+            }
         }
         
         //your position in the labyrinth
@@ -549,6 +587,17 @@ class LabyrinthSurvival : public BaseProject {
                 keyPos[i] = notVisiblePosition;
                 //implement here that the text that changes when you take a key
             }
+        }
+        
+        // In case you have taken all the keys, open the door
+        bool youHaveTakenAllTheKeys = true;//check if you have taken all the keys
+        for(int i = 0; i < effectiveNumberOfKeys; i++){
+            if(!tookKey[i]){
+                youHaveTakenAllTheKeys = false;
+            }
+        }
+        if(youHaveTakenAllTheKeys){
+            doorPos = notVisiblePosition;
         }
         
         // In case you take a food
@@ -581,7 +630,8 @@ class LabyrinthSurvival : public BaseProject {
 
 		// updates global uniforms
 		GlobalUniformBufferObject gubo{};
-        gubo.lightPos = CamPos; + glm::vec3(0.0f, 1.0f, 0.0f);
+        gubo.lightPos[0] = CamPos + glm::vec3(0.0f, 5.0f, 0.0f);
+        gubo.lightPos[1] = CamPos + glm::vec3(0.0f, 20.0f, 0.0f);
 		gubo.lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 		gubo.eyePos = CamPos;
         
@@ -614,6 +664,12 @@ class LabyrinthSurvival : public BaseProject {
             DSW[i].map(currentImage, &ubo, sizeof(ubo), 0);
             DSW[i].map(currentImage, &gubo, sizeof(gubo), 1);
         }
+        
+        ubo.mMat = MakeWorldMatrix(doorPos, doorRot, doorScale) * baseTr;//translate and rotate the gate to locate
+        ubo.mvpMat = ViewPrj * ubo.mMat;
+        ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
+        DSD.map(currentImage, &ubo, sizeof(ubo), 0);
+        DSD.map(currentImage, &gubo, sizeof(gubo), 1);
         
         for (int i = 0; i < MG.size(); i++) {
             ubo.mMat = MakeWorldMatrix(groundPos[i], groundRot, groundScale) * baseTr;//translate the ground to locate
@@ -659,7 +715,7 @@ class LabyrinthSurvival : public BaseProject {
                 out[i][j] = 'B';
             }
         }
-        for(int i = startXBossFight; i < endXBossFight; i++){//place waals around boss fight
+        for(int i = startXBossFight; i < endXBossFight; i++){//place walls around boss fight
             out[i][startYBossFight] = 'W';
             out[i][endYBossFight-1] = 'W';
         }
@@ -668,6 +724,10 @@ class LabyrinthSurvival : public BaseProject {
             out[endXBossFight-1][j] = 'W';
         }
         out[startXBossFight+(xLenghtBossFight/2)][endYBossFight-1] = 'D';//place the door
+        doorPos = glm::vec3(endYBossFight-1+0.5, 0.0, startXBossFight+(xLenghtBossFight/2)+0.5);//locate the gate (position)
+        doorRot = glm::quat(glm::vec3(0, glm::radians(90.0f), 0)) *
+                            glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
+                            glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));//locate the gate (rotation)
 		// Select where to dig randomly the labyrinth
         int nEstr = (nr * nc) / 7;
         for(int count = 0; count < nEstr; count++){
@@ -941,8 +1001,18 @@ class LabyrinthSurvival : public BaseProject {
                     labyrinthShape[i][j] = true;
                 } else {
                     labyrinthShape[i][j] = false;
-                    groundPos.push_back(glm::vec3(j+0.5, 0.0, i+0.5));
+                    groundPos.push_back(glm::vec3(j+0.5, 0.0, i+0.5));//also locate the ground where you can go
                     effectiveNumberOfGround++;
+                }
+            }
+        }
+        // update also reducedLabyrinthShape with walls and door positions
+        for(int i = 0; i < nr; i++){
+            for(int j = 0; j < nc; j++){
+                if(out[i][j] == '#' || out[i][j] == 'D'){
+                    reducedLabyrinthShape[i][j] = true;
+                } else {
+                    reducedLabyrinthShape[i][j] = false;
                 }
             }
         }

@@ -8,7 +8,7 @@ layout(location = 2) in vec2 fragUV;
 layout(location = 0) out vec4 outColor;
 
 layout(binding = 1) uniform GlobalUniformBufferObject {
-	vec3 lightPos;
+	vec3[2] lightPos;
 	vec4 lightColor;
 	vec3 eyePos;
 } gubo;
@@ -24,16 +24,43 @@ void main() {
     const float beta = 2.0f;
     const float g = 1.5;
     
-    vec3 pointPos = gubo.lightPos;
+    vec3[2] pointPos;
+    for(int i = 0; i < 2; i++){
+        pointPos[i] = gubo.lightPos[i];
+    }
     
-    vec3 decayFactor = gubo.lightColor.rgb * pow((g / length(pointPos - fragPos)), beta);
+    vec3[2] decayFactor;
+    for(int i = 0; i < 2; i++){
+        decayFactor[i] = gubo.lightColor.rgb * pow((g / length(pointPos[i] - fragPos)), beta);
+    }
     
-    vec3 lightDir = (pointPos - fragPos) / length(pointPos - fragPos);
-    vec3 lightColor = decayFactor * gubo.lightColor.rgb;
+    vec3[2] lightDir;
+    vec3[2] lightColor;
+    for(int i = 0; i < 2; i++){
+        lightDir[i] = (pointPos[i] - fragPos) / length(pointPos[i] - fragPos);
+    }
+    for(int i = 0; i < 2; i++){
+        lightColor[i] = decayFactor[i] * gubo.lightColor.rgb;
+    }
 
-    vec3 Diffuse = texture(tex, fragUV).rgb * 0.99f * clamp(dot(Norm, lightDir),0.0,1.0);
-    vec3 Specular = vec3(pow(clamp(dot(Norm, normalize(lightDir + EyeDir)),0.0,1.0), 160.0f));
+    vec3[2] Diffuse;
+    vec3[2] Specular;
+    for(int i = 0; i < 2; i++){
+        Diffuse[i] = texture(tex, fragUV).rgb * 0.99f * clamp(dot(Norm, lightDir[i]),0.0,1.0);
+    }
+    for(int i = 0; i < 2; i++){
+        Specular[i] = vec3(pow(clamp(dot(Norm, normalize(lightDir[i] + EyeDir)),0.0,1.0), 160.0f));
+    }
     
-    outColor = vec4(clamp((Diffuse + Specular) * lightColor.rgb,0.0,1.0), 1.0f);
+    vec3 sumDiffuse = Diffuse[0];
+    vec3 sumSpecular = Specular[0];
+    vec3 sumLightColorRgb = lightColor[0].rgb;
+    for(int i = 1; i < 2; i++){
+        sumDiffuse += Diffuse[i];
+        sumSpecular += Specular[i];
+        sumLightColorRgb += lightColor[i].rgb;
+    }
+    
+    outColor = vec4(clamp((sumDiffuse + sumSpecular) * sumLightColorRgb,0.0,1.0), 1.0f);
     
 }
