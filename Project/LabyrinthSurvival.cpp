@@ -48,16 +48,18 @@ class LabyrinthSurvival : public BaseProject {
 
     Model M{};//Model M for the labyrinth
     DescriptorSet DS;//DescriptorSet DS for the labyrinth
-    Texture TL, TW, TD, TG, TK, TF;//Texture for the labyrinth, for the wall, the door, the ground, for the keys and for the food
+    Texture TL, TW, TD, TB, TG, TK, TF;//Texture for the labyrinth, for the wall, the door, the boss, the ground, for the keys and for the food
     std::vector<Model> MK;//model MK for the keys
     std::vector<Model> MF;//model MF for the food
     std::vector<DescriptorSet> DSK;//DescriptorSet DSK for the keys
     std::vector<DescriptorSet> DSF;//DescriptorSet DSF for the food
     std::vector<Model> MW;//model MW for the walls
     Model MD;//model MD for the door
+    Model MB;//model MB for the boss
     std::vector<Model> MG;//model MW for the ground
     std::vector<DescriptorSet> DSW;//DescriptorSet for the walls
     DescriptorSet DSD;//DescriptorSet for the door
+    DescriptorSet DSB;//DescriptorSet for the boss
     std::vector<DescriptorSet> DSG;//DescriptorSet for the ground
     
     TextMaker txt;//To insert a text in the UI of this application
@@ -110,6 +112,17 @@ class LabyrinthSurvival : public BaseProject {
     glm::vec3 doorPos;
     glm::quat doorRot;
     glm::vec3 doorScale = glm::vec3(0.25f);
+    
+    //parameters for the boss pos, rot and scale
+    glm::vec3 bossPos;
+    float bossRot;
+    glm::vec3 bossScale = glm::vec3(4.0f);
+    
+    //limit the area where the boss can stay
+    float xStartLimitBossPos;
+    float xEndLimitBossPos;
+    float zStartLimitBossPos;
+    float zEndLimitBossPos;
     
     //parameters for the ground pos, rot and scale
     std::vector<glm::vec3> groundPos;
@@ -183,6 +196,8 @@ class LabyrinthSurvival : public BaseProject {
         
         MD.init(this, "models/Wall.obj");//model of a gate
         
+        MB.init(this, "models/Character.obj");//model of the boss
+        
         for (int i = 0; i < effectiveNumberOfGround; i++) {
             Model ground;
             //model of a ground: for each pice of ground, initializate randomly one of the two model of a ground
@@ -250,6 +265,7 @@ class LabyrinthSurvival : public BaseProject {
         TL.init(this, "textures/IMG_9647.png");
         TW.init(this, "textures/LowPolyDungeonsLite_Texture_01.png");
         TD.init(this, "textures/door.png");
+        TB.init(this, "textures/boss.png");
         TG.init(this, "textures/ground.png");
         TK.init(this, "textures/key.png");
         TF.init(this, "textures/food.png");
@@ -310,6 +326,12 @@ class LabyrinthSurvival : public BaseProject {
                 {2, TEXTURE, 0, &TD}
         });
         
+        DSB.init(this, &DSL1, {
+                {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+                {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr},
+                {2, TEXTURE, 0, &TB}
+        });
+        
         for (Model ground : MG) {
             DescriptorSet DSGround;
             DSGround.init(this, &DSL1, {
@@ -338,6 +360,7 @@ class LabyrinthSurvival : public BaseProject {
             ds.cleanup();
         }
         DSD.cleanup();
+        DSB.cleanup();
         for (DescriptorSet ds : DSG) {
             ds.cleanup();
         }
@@ -351,6 +374,7 @@ class LabyrinthSurvival : public BaseProject {
         TL.cleanup();
         TW.cleanup();
         TD.cleanup();
+        TB.cleanup();
         TG.cleanup();
         TK.cleanup();
         TF.cleanup();
@@ -364,6 +388,7 @@ class LabyrinthSurvival : public BaseProject {
             wall.cleanup();
         }
         MD.cleanup();
+        MB.cleanup();
         for (Model ground : MG) {
             ground.cleanup();
         }
@@ -415,6 +440,10 @@ class LabyrinthSurvival : public BaseProject {
         MD.bind(commandBuffer);
         DSD.bind(commandBuffer, P1, currentImage);
         vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MD.indices.size()), 1, 0, 0, 0);
+        
+        MB.bind(commandBuffer);
+        DSB.bind(commandBuffer, P1, currentImage);
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MB.indices.size()), 1, 0, 0, 0);
         
         for (int i = 0; i < MG.size(); i++) {
             MG[i].bind(commandBuffer);
@@ -472,7 +501,7 @@ class LabyrinthSurvival : public BaseProject {
         if(!goingInstantLeft && !goingInstantRight){//if you are not using fast rotation to the nearest 90 degree angle
             CamAlpha = CamAlpha - ROT_SPEED * deltaT * r.y;//manage rotation normally
         } else {//manage fast rotation to the nearest 90 degree angle
-            float pih = 3.14159265358979f / 2.0f;//there are 4 possible direction 90 degree directions
+            const float pih = 3.14159265358979f / 2.0f;//there are 4 possible direction 90 degree directions
             float resDiv = CamAlpha / pih;
             int resDivInt = resDiv;
             float anglePrev = pih * resDivInt;//previous 90 degree angle
@@ -526,7 +555,7 @@ class LabyrinthSurvival : public BaseProject {
             if(labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x-minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x-minDistToWalls)] == true){
                 CamPos = CamPosPrec;//return to the previous position
                 //go on even if you are lightly passing through walls
-                float pih = 3.14159265358979f / 2.0f;//there are 4 possible direction the walls are oriented
+                const float pih = 3.14159265358979f / 2.0f;//there are 4 possible direction the walls are oriented
                 //find the residue value to the nearest direction of the 4 possible you are going
                 int resultDiv = CamAlpha / pih;
                 float resDivVal = resultDiv * ((float)pih);
@@ -609,6 +638,44 @@ class LabyrinthSurvival : public BaseProject {
                 //implement here the text that you recover some life when you take a food
             }
         }
+        
+        const float BOSS_ROT_SPEED = glm::radians(90.0f);
+        const float BOSS_MOVE_SPEED = 1.5f;
+        
+        float distBossYou = sqrt((pow((CamPos.x - bossPos.x),2)) + (pow((CamPos.z - bossPos.z),2)));//distance between the boss and you
+        if(CamPos.x - bossPos.x == 0.0f){//to avoid division by 0
+            const float nearToZero = 0.00000000001;
+            bossPos.x = nearToZero;
+        }
+        float dirBossYou = atan((CamPos.z - bossPos.z) / (CamPos.x - bossPos.x));//direction of you from the boss
+        //adjust dirBossYou val
+        const float pih = (3.14159265358979f / 2.0f);
+        if((CamPos.x - bossPos.x) >= 0.0f && (CamPos.z - bossPos.z) >= 0.0f){
+            dirBossYou += 0.0f * pih;//I clock face
+        }
+        if((CamPos.x - bossPos.x) < 0.0f && (CamPos.z - bossPos.z) >= 0.0f){
+            dirBossYou += 2.0f * pih;//II clock face
+        }
+        if((CamPos.x - bossPos.x) < 0.0f && (CamPos.z - bossPos.z) < 0.0f){
+            dirBossYou += 2.0f * pih;//III clock face
+        }
+        if((CamPos.x - bossPos.x) >= 0.0f && (CamPos.z - bossPos.z) < 0.0f){
+            dirBossYou += 4.0 * pih;//IV clock face
+        }
+                
+        float incrDir = 1.0f;
+        if(abs(dirBossYou - bossRot) <= glm::radians(180.0f) && bossRot > dirBossYou ||
+           abs(dirBossYou - bossRot) > glm::radians(180.0f) && bossRot < dirBossYou){//the boss watchs you
+            incrDir = -1.0f;
+        }
+        
+        bossRot = bossRot + BOSS_ROT_SPEED * deltaT * incrDir;//the boss rotate
+        
+        if(bossRot < glm::radians(0.0f)){// bossRot between 0 and 360 degree
+            bossRot += glm::radians(360.0f);
+        } else if(bossRot >= glm::radians(360.0f)){
+            bossRot -= glm::radians(360.0f);
+        }
 		
         // close the application
 		if(glfwGetKey(window, GLFW_KEY_ESCAPE)) {
@@ -630,8 +697,8 @@ class LabyrinthSurvival : public BaseProject {
 
 		// updates global uniforms
 		GlobalUniformBufferObject gubo{};
-        gubo.lightPos[0] = CamPos + glm::vec3(0.0f, 5.0f, 0.0f);
-        gubo.lightPos[1] = CamPos + glm::vec3(0.0f, 20.0f, 0.0f);
+        gubo.lightPos[0] = CamPos + glm::vec3(0.0f, 1.0f, 0.0f);
+        gubo.lightPos[1] = CamPos + glm::vec3(0.0f, 5.0f, 0.0f);
 		gubo.lightColor = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f);
 		gubo.eyePos = CamPos;
         
@@ -670,6 +737,15 @@ class LabyrinthSurvival : public BaseProject {
         ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
         DSD.map(currentImage, &ubo, sizeof(ubo), 0);
         DSD.map(currentImage, &gubo, sizeof(gubo), 1);
+        
+        glm::quat bossRotQuat = glm::quat(glm::vec3(0, -bossRot, 0)) *//equivalent quat of bossRot in radians anticlockwise
+                         glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
+                         glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
+        ubo.mMat = MakeWorldMatrix(bossPos, bossRotQuat, bossScale) * baseTr;//translate and rotate the boss to locate
+        ubo.mvpMat = ViewPrj * ubo.mMat;
+        ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
+        DSB.map(currentImage, &ubo, sizeof(ubo), 0);
+        DSB.map(currentImage, &gubo, sizeof(gubo), 1);
         
         for (int i = 0; i < MG.size(); i++) {
             ubo.mMat = MakeWorldMatrix(groundPos[i], groundRot, groundScale) * baseTr;//translate the ground to locate
@@ -728,6 +804,14 @@ class LabyrinthSurvival : public BaseProject {
         doorRot = glm::quat(glm::vec3(0, glm::radians(90.0f), 0)) *
                             glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                             glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));//locate the gate (rotation)
+        bossPos = glm::vec3(startYBossFight+(yLenghtBossFight/2), 0.0, startXBossFight+(xLenghtBossFight/2)+0.5);//locate the boss (position)
+        bossRot = 0.0f;//locate the boss (rotation)
+        // Limit the movements of the boss
+        const float minDistFromWallBoss = 1.0f;
+        xStartLimitBossPos = bossPos.x - ((yLenghtBossFight / 2) - minDistFromWallBoss);
+        xEndLimitBossPos = bossPos.x + ((yLenghtBossFight / 2) - minDistFromWallBoss);
+        zStartLimitBossPos = bossPos.y - ((xLenghtBossFight / 2) - minDistFromWallBoss);
+        zEndLimitBossPos = bossPos.y + ((xLenghtBossFight / 2) - minDistFromWallBoss);
 		// Select where to dig randomly the labyrinth
         int nEstr = (nr * nc) / 7;
         for(int count = 0; count < nEstr; count++){
