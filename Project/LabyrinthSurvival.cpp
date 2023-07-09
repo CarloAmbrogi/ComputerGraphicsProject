@@ -80,12 +80,13 @@ class LabyrinthSurvival : public BaseProject {
     // Variables useful when playing
     std::vector<bool> tookKey;//if you took each of the keys
     std::vector<bool> tookFood;//if you took each of the keys
+    bool youNeedToWalkAwayFromTheBoss = false;//in case the boss hurts you and you have to walk away your movement is temporanely locked
     
 	// Other application parameters
 	glm::vec3 CamPos = glm::vec3(0.5, 0.5, 10.0);//camera position
     glm::vec3 CamPosPrec = glm::vec3(0.5, 0.5, 10.0);//remember prew position to check if you are not overriding a wall
-	float CamAlpha = 0.0f;
-	float CamBeta = 0.0f;
+    float CamAlpha = glm::radians(0.0f);
+    float CamBeta = glm::radians(0.0f);
 	float Ar;//aspect ratio
     glm::vec3 notVisiblePosition = glm::vec3(-1, -1, -1);//a position to place an object witch disappear
     
@@ -116,7 +117,7 @@ class LabyrinthSurvival : public BaseProject {
     //parameters for the boss pos, rot and scale
     glm::vec3 bossPos;
     float bossRot;
-    glm::vec3 bossScale = glm::vec3(4.0f);
+    glm::vec3 bossScale = glm::vec3(2.25f);
     
     //limit the area where the boss can stay
     float xStartLimitBossPos;
@@ -194,7 +195,7 @@ class LabyrinthSurvival : public BaseProject {
             MW.push_back(wall);
         }
         
-        MD.init(this, "models/Wall.obj");//model of a gate
+        MD.init(this, "models/Wall.obj");//model of a door
         
         MB.init(this, "models/Character.obj");//model of the boss
         
@@ -544,9 +545,11 @@ class LabyrinthSurvival : public BaseProject {
 		glm::vec3 ux = glm::rotate(glm::mat4(1.0f), CamAlpha, glm::vec3(0,1,0)) * glm::vec4(1,0,0,1);
 		glm::vec3 uz = glm::rotate(glm::mat4(1.0f), CamAlpha, glm::vec3(0,1,0)) * glm::vec4(0,0,-1,1);
         CamPosPrec = CamPos;
-		CamPos = CamPos + MOVE_SPEED * m.x * ux * deltaT;
-		CamPos = CamPos + MOVE_SPEED * m.y * glm::vec3(0,1,0) * deltaT;
-		CamPos = CamPos + MOVE_SPEED * m.z * uz * deltaT;
+        if(!youNeedToWalkAwayFromTheBoss){//normally you move using W A S D keys; but, in case the boss hurts you and you have to walk away from him, your movement are temporanely locked
+            CamPos = CamPos + MOVE_SPEED * m.x * ux * deltaT;
+            CamPos = CamPos + MOVE_SPEED * m.y * glm::vec3(0,1,0) * deltaT;
+            CamPos = CamPos + MOVE_SPEED * m.z * uz * deltaT;
+        }
         
         //You can't go over a wall
         if(labyrinthShapeInitialized){
@@ -639,8 +642,9 @@ class LabyrinthSurvival : public BaseProject {
             }
         }
         
-        const float BOSS_ROT_SPEED = glm::radians(90.0f);
-        const float BOSS_MOVE_SPEED = 1.5f;
+        const float BOSS_ROT_SPEED = glm::radians(110.0f);
+        const float BOSS_MOVE_SPEED = 0.005f;
+        const float WALK_AWAY_SPEED = 0.04f;//speed to alk away from the boss in case the boss hurt you
         
         float distBossYou = sqrt((pow((CamPos.x - bossPos.x),2)) + (pow((CamPos.z - bossPos.z),2)));//distance between the boss and you
         if(CamPos.x - bossPos.x == 0.0f){//to avoid division by 0
@@ -662,19 +666,60 @@ class LabyrinthSurvival : public BaseProject {
         if((CamPos.x - bossPos.x) >= 0.0f && (CamPos.z - bossPos.z) < 0.0f){
             dirBossYou += 4.0 * pih;//IV clock face
         }
-                
+        
+        // boss rotation
         float incrDir = 1.0f;
         if(abs(dirBossYou - bossRot) <= glm::radians(180.0f) && bossRot > dirBossYou ||
            abs(dirBossYou - bossRot) > glm::radians(180.0f) && bossRot < dirBossYou){//the boss watchs you
             incrDir = -1.0f;
         }
-        
+        const float minIncrRotation = glm::radians(1.0f);//to avoid lag in boss rotation
+        if(abs(dirBossYou - bossRot) <= glm::radians(180.0f) && (abs(bossRot - dirBossYou)) < minIncrRotation ||
+           abs(dirBossYou - bossRot) > glm::radians(180.0f) && (abs(bossRot - dirBossYou)) > glm::radians(360.0f) - minIncrRotation){
+            incrDir = 0.0f;
+        }
         bossRot = bossRot + BOSS_ROT_SPEED * deltaT * incrDir;//the boss rotate
-        
         if(bossRot < glm::radians(0.0f)){// bossRot between 0 and 360 degree
             bossRot += glm::radians(360.0f);
         } else if(bossRot >= glm::radians(360.0f)){
             bossRot -= glm::radians(360.0f);
+        }
+        
+        // the boss approaches you
+        glm::vec3 bossPosPrec = bossPos;
+        float bossPosXIncrFact = cos(dirBossYou);
+        float bossPosZIncrFact = sin(dirBossYou);
+        const float minIncrToApproach = 0.05f;//to avoid lag
+        if(abs(bossPosXIncrFact) < minIncrToApproach){
+            bossPosXIncrFact = 0.0f;
+        }
+        if(abs(bossPosZIncrFact) < minIncrToApproach){
+            bossPosZIncrFact = 0.0f;
+        }
+        float bossPosXIncr = BOSS_MOVE_SPEED * bossPosXIncrFact;
+        float bossPosZIncr = BOSS_MOVE_SPEED * bossPosZIncrFact;
+        bossPos.x = bossPos.x + bossPosXIncr;
+        bossPos.z = bossPos.z + bossPosZIncr;
+        if(bossPos.x < xStartLimitBossPos || bossPos.x > xEndLimitBossPos){// the boss can't exit from its area
+            bossPos.x = bossPosPrec.x;
+        }
+        if(bossPos.z < zStartLimitBossPos || bossPos.z > zEndLimitBossPos){
+            bossPos.z = bossPosPrec.z;
+        }
+        
+        //in case you are too near to the boss the boss the boss deals damage to you and you walk away morover you lose some life
+        const float minDistFromTheBoss = 1.0f;
+        const float maxDistFromTheBoss = 2.0f;//distance to walk away from the boss
+        if(distBossYou < minDistFromTheBoss || youNeedToWalkAwayFromTheBoss){
+            youNeedToWalkAwayFromTheBoss = true;
+            float walkAwayXIncr = WALK_AWAY_SPEED * cos(dirBossYou);
+            float walkAwayZIncr = WALK_AWAY_SPEED * sin(dirBossYou);
+            CamPos.x = CamPos.x + walkAwayXIncr;
+            CamPos.z = CamPos.z + walkAwayZIncr;
+            if(distBossYou >= maxDistFromTheBoss){
+                youNeedToWalkAwayFromTheBoss = false;
+            }
+            //implement here that you take damage and you lose some of you life
         }
 		
         // close the application
@@ -732,7 +777,7 @@ class LabyrinthSurvival : public BaseProject {
             DSW[i].map(currentImage, &gubo, sizeof(gubo), 1);
         }
         
-        ubo.mMat = MakeWorldMatrix(doorPos, doorRot, doorScale) * baseTr;//translate and rotate the gate to locate
+        ubo.mMat = MakeWorldMatrix(doorPos, doorRot, doorScale) * baseTr;//translate and rotate the door to locate
         ubo.mvpMat = ViewPrj * ubo.mMat;
         ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
         DSD.map(currentImage, &ubo, sizeof(ubo), 0);
@@ -780,7 +825,7 @@ class LabyrinthSurvival : public BaseProject {
             srand(1);//this is a default labyrinth in case the generation of the labyrinth take many tentatives
         }
         // Select randomly where to locate the boss fight
-        const int xLenghtBossFight = 7;
+        const int xLenghtBossFight = 11;
         const int yLenghtBossFight = 10;
         int startXBossFight = rand() % (nr - xLenghtBossFight);
         int endXBossFight = startXBossFight + xLenghtBossFight;
@@ -800,18 +845,18 @@ class LabyrinthSurvival : public BaseProject {
             out[endXBossFight-1][j] = 'W';
         }
         out[startXBossFight+(xLenghtBossFight/2)][endYBossFight-1] = 'D';//place the door
-        doorPos = glm::vec3(endYBossFight-1+0.5, 0.0, startXBossFight+(xLenghtBossFight/2)+0.5);//locate the gate (position)
+        doorPos = glm::vec3(endYBossFight-1+0.5, 0.0, startXBossFight+(xLenghtBossFight/2)+0.5);//locate the door (position)
         doorRot = glm::quat(glm::vec3(0, glm::radians(90.0f), 0)) *
                             glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
-                            glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));//locate the gate (rotation)
+                            glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));//locate the door (rotation)
         bossPos = glm::vec3(startYBossFight+(yLenghtBossFight/2), 0.0, startXBossFight+(xLenghtBossFight/2)+0.5);//locate the boss (position)
         bossRot = 0.0f;//locate the boss (rotation)
         // Limit the movements of the boss
-        const float minDistFromWallBoss = 1.0f;
-        xStartLimitBossPos = bossPos.x - ((yLenghtBossFight / 2) - minDistFromWallBoss);
-        xEndLimitBossPos = bossPos.x + ((yLenghtBossFight / 2) - minDistFromWallBoss);
-        zStartLimitBossPos = bossPos.y - ((xLenghtBossFight / 2) - minDistFromWallBoss);
-        zEndLimitBossPos = bossPos.y + ((xLenghtBossFight / 2) - minDistFromWallBoss);
+        const float minDistFromWallBoss = 2.5f;
+        xStartLimitBossPos = startYBossFight + (minDistFromWallBoss + 1.0f);
+        xEndLimitBossPos = endYBossFight - (minDistFromWallBoss + 1.0f);
+        zStartLimitBossPos = startXBossFight + (minDistFromWallBoss + 1.0f);
+        zEndLimitBossPos = endXBossFight - (minDistFromWallBoss + 1.0f);
 		// Select where to dig randomly the labyrinth
         int nEstr = (nr * nc) / 7;
         for(int count = 0; count < nEstr; count++){
