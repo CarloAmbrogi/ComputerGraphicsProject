@@ -80,6 +80,7 @@ class LabyrinthSurvival : public BaseProject {
     // Variables useful when playing
     std::vector<bool> tookKey;//if you took each of the keys
     std::vector<bool> tookFood;//if you took each of the keys
+    bool bossFightStarted = false;//when you enter in the boss room the boss appear and the boss fight start
     bool youNeedToWalkAwayFromTheBoss = false;//in case the boss hurts you and you have to walk away your movement is temporanely locked
     
 	// Other application parameters
@@ -113,6 +114,7 @@ class LabyrinthSurvival : public BaseProject {
     glm::vec3 doorPos;
     glm::quat doorRot;
     glm::vec3 doorScale = glm::vec3(0.25f);
+    glm::vec3 originalDoorPos;//the door will reappear also during the boss fight because you won't be able to exit from the boss room during the boss fight
     
     //parameters for the boss pos, rot and scale
     glm::vec3 bossPos;
@@ -545,13 +547,13 @@ class LabyrinthSurvival : public BaseProject {
 		glm::vec3 ux = glm::rotate(glm::mat4(1.0f), CamAlpha, glm::vec3(0,1,0)) * glm::vec4(1,0,0,1);
 		glm::vec3 uz = glm::rotate(glm::mat4(1.0f), CamAlpha, glm::vec3(0,1,0)) * glm::vec4(0,0,-1,1);
         CamPosPrec = CamPos;
-        if(!youNeedToWalkAwayFromTheBoss){//normally you move using W A S D keys; but, in case the boss hurts you and you have to walk away from him, your movement are temporanely locked
+        if(!youNeedToWalkAwayFromTheBoss){//normally you move using W A S D keys; but, in case the boss hurts you and you have to walk away from him, your movements are temporanely locked
             CamPos = CamPos + MOVE_SPEED * m.x * ux * deltaT;
             CamPos = CamPos + MOVE_SPEED * m.y * glm::vec3(0,1,0) * deltaT;
             CamPos = CamPos + MOVE_SPEED * m.z * uz * deltaT;
         }
         
-        //You can't go over a wall
+        //You can't go over a wall or pass through the door if there are other keys to take in the labyrinth
         if(labyrinthShapeInitialized){
             const float minDistToWalls = 0.15f;
             //you can't pass through a wall
@@ -593,7 +595,7 @@ class LabyrinthSurvival : public BaseProject {
             }
             //you can't pass through the door if there are other keys to take in the labyrinth
             if(reducedLabyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || reducedLabyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x-minDistToWalls)] == true || reducedLabyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || reducedLabyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x-minDistToWalls)] == true){
-                if(CamPos.x <= doorPos.x + minDistToWalls){//if you are also trying to pass through the door going left (into the room)
+                if(CamPos.x <= originalDoorPos.x + minDistToWalls){//if you are also trying to pass through the door going left (into the room)
                     bool youHaveTakenAllTheKeys = true;//check if you have taken all the keys
                     for(int i = 0; i < effectiveNumberOfKeys; i++){
                         if(!tookKey[i]){
@@ -602,7 +604,19 @@ class LabyrinthSurvival : public BaseProject {
                     }
                     if(!youHaveTakenAllTheKeys){//if you have not taken all the keys
                         CamPos = CamPosPrec;//return to the previous position
+                    } else {//you have passed normally having all the keys; so you are in and the boss fight start
+                        bossFightStarted = true;
+                        doorPos = originalDoorPos + glm::vec3(0.5f, 0.0f, 0.0f);
+                        doorRot = glm::quat(glm::vec3(0, glm::radians(-90.0f), 0)) *
+                        glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
+                        glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));//now you are locked into the boss fight room
                     }
+                }
+            }
+            //you must stay in the boss room if you are in and the boss fight is started
+            if(bossFightStarted){
+                if(CamPos.x > originalDoorPos.x && CamPos.x > CamPosPrec.x){//you can't exit from the boss room when you are in and the boss fight is started
+                    CamPos.x = CamPosPrec.x;
                 }
             }
         }
@@ -621,14 +635,14 @@ class LabyrinthSurvival : public BaseProject {
             }
         }
         
-        // In case you have taken all the keys, open the door
+        // In case you have taken all the keys and the boss fight isn't started, open the door
         bool youHaveTakenAllTheKeys = true;//check if you have taken all the keys
         for(int i = 0; i < effectiveNumberOfKeys; i++){
             if(!tookKey[i]){
                 youHaveTakenAllTheKeys = false;
             }
         }
-        if(youHaveTakenAllTheKeys){
+        if(youHaveTakenAllTheKeys && !bossFightStarted){
             doorPos = notVisiblePosition;
         }
         
@@ -707,7 +721,7 @@ class LabyrinthSurvival : public BaseProject {
             bossPos.z = bossPosPrec.z;
         }
         
-        //in case you are too near to the boss the boss the boss deals damage to you and you walk away morover you lose some life
+        // in case you are too near to the boss the boss the boss deals damage to you and you walk away morover you lose some life
         const float minDistFromTheBoss = 1.0f;
         const float maxDistFromTheBoss = 2.0f;//distance to walk away from the boss
         if(distBossYou < minDistFromTheBoss || youNeedToWalkAwayFromTheBoss){
@@ -720,6 +734,22 @@ class LabyrinthSurvival : public BaseProject {
                 youNeedToWalkAwayFromTheBoss = false;
             }
             //implement here that you take damage and you lose some of you life
+        }
+        
+        // in case you fire to the boss
+        const float timeToChargeTheFire = 0.5f;//needed time to fire again
+        static float fireCharging = 0.0f;//remaining time to charge the fire
+        fireCharging -= deltaT;
+        if(fireCharging < 0.0f){
+            fireCharging = 0.0f;
+        }
+        // in case you use the fire command
+        if(fire){
+            if(fireCharging <= 0){//the fire need to be charged
+                fireCharging = timeToChargeTheFire;
+                std::cout << "You have fired\n";
+                
+            }
         }
 		
         // close the application
@@ -825,8 +855,8 @@ class LabyrinthSurvival : public BaseProject {
             srand(1);//this is a default labyrinth in case the generation of the labyrinth take many tentatives
         }
         // Select randomly where to locate the boss fight
-        const int xLenghtBossFight = 11;
-        const int yLenghtBossFight = 10;
+        const int xLenghtBossFight = 11;//need to be an odd number
+        const int yLenghtBossFight = 11;
         int startXBossFight = rand() % (nr - xLenghtBossFight);
         int endXBossFight = startXBossFight + xLenghtBossFight;
         int startYBossFight = rand() % (nc - yLenghtBossFight);
@@ -846,6 +876,7 @@ class LabyrinthSurvival : public BaseProject {
         }
         out[startXBossFight+(xLenghtBossFight/2)][endYBossFight-1] = 'D';//place the door
         doorPos = glm::vec3(endYBossFight-1+0.5, 0.0, startXBossFight+(xLenghtBossFight/2)+0.5);//locate the door (position)
+        originalDoorPos = doorPos;//this is this original door pos (the door will reappear also during the boss fight because you won't be able to exit from the boss room during the boss fight)
         doorRot = glm::quat(glm::vec3(0, glm::radians(90.0f), 0)) *
                             glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                             glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));//locate the door (rotation)
