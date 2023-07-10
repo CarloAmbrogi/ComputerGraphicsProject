@@ -81,7 +81,9 @@ class LabyrinthSurvival : public BaseProject {
     std::vector<bool> tookKey;//if you took each of the keys
     std::vector<bool> tookFood;//if you took each of the keys
     bool bossFightStarted = false;//when you enter in the boss room the boss appear and the boss fight start
+    bool bossFightStartedAnimationFinished = false;//when the boss fight start there is an animation that the boss appear
     bool youNeedToWalkAwayFromTheBoss = false;//in case the boss hurts you and you have to walk away your movement is temporanely locked
+    float fireCharging = 0.0f;//remaining time to charge the fire
     
 	// Other application parameters
 	glm::vec3 CamPos = glm::vec3(0.5, 0.5, 10.0);//camera position
@@ -119,7 +121,8 @@ class LabyrinthSurvival : public BaseProject {
     //parameters for the boss pos, rot and scale
     glm::vec3 bossPos;
     float bossRot;
-    glm::vec3 bossScale = glm::vec3(2.25f);
+    float bossScale = 0.0f;
+    float maxBossScale = 2.25f;//when the boss fight starts there is an animation that the boss appear form 0 to max scale
     
     //limit the area where the boss can stay
     float xStartLimitBossPos;
@@ -539,7 +542,17 @@ class LabyrinthSurvival : public BaseProject {
                 goingInstantRight = false;
             }
         }
-
+        
+        //Animation boss appear when the boss fight is started
+        const float BOSS_SCALE_SPEED = 3.5f;
+        if(bossFightStarted){
+            bossScale += BOSS_SCALE_SPEED * deltaT;
+        }
+        if(bossScale > maxBossScale){
+            bossScale = maxBossScale;
+            bossFightStartedAnimationFinished = true;//the animation that the boss appears is finished
+        }
+        
         CamBeta  = CamBeta - ROT_SPEED * deltaT * r.x;
 		CamBeta  =  CamBeta < glm::radians(-90.0f) ? glm::radians(-90.0f) :
 				   (CamBeta > glm::radians( 90.0f) ? glm::radians( 90.0f) : CamBeta);
@@ -606,7 +619,7 @@ class LabyrinthSurvival : public BaseProject {
                         CamPos = CamPosPrec;//return to the previous position
                     } else {//you have passed normally having all the keys; so you are in and the boss fight start
                         bossFightStarted = true;
-                        doorPos = originalDoorPos + glm::vec3(0.5f, 0.0f, 0.0f);
+                        doorPos = originalDoorPos + glm::vec3(minDistToWalls, 0.0f, 0.0f);
                         doorRot = glm::quat(glm::vec3(0, glm::radians(-90.0f), 0)) *
                         glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                         glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));//now you are locked into the boss fight room
@@ -628,10 +641,18 @@ class LabyrinthSurvival : public BaseProject {
         // In case you take a key
         for(int i = 0; i < effectiveNumberOfKeys; i++){
             if(x == xKeyPos[i] && y == yKeyPos[i] && tookKey[i] == false){
-                std::cout << "You took a key\n";
                 tookKey[i] = true;
                 keyPos[i] = notVisiblePosition;
-                //implement here that the text that changes when you take a key
+                int howManyRemainingKeys = 0;
+                for(int j = 0; j < effectiveNumberOfKeys; j++){
+                    if(tookKey[j] == false){
+                        howManyRemainingKeys++;
+                    }
+                }
+                std::cout << "You took a key (remaining keys: ";
+                std::cout << howManyRemainingKeys;
+                std::cout << ")\n";
+                //implement here that the text changes when you take a key
             }
         }
         
@@ -658,7 +679,7 @@ class LabyrinthSurvival : public BaseProject {
         
         const float BOSS_ROT_SPEED = glm::radians(110.0f);
         const float BOSS_MOVE_SPEED = 0.005f;
-        const float WALK_AWAY_SPEED = 0.04f;//speed to alk away from the boss in case the boss hurt you
+        const float WALK_AWAY_SPEED = 0.04f;//speed to alk away from the boss in case the boss hurts you
         
         float distBossYou = sqrt((pow((CamPos.x - bossPos.x),2)) + (pow((CamPos.z - bossPos.z),2)));//distance between the boss and you
         if(CamPos.x - bossPos.x == 0.0f){//to avoid division by 0
@@ -699,32 +720,40 @@ class LabyrinthSurvival : public BaseProject {
             bossRot -= glm::radians(360.0f);
         }
         
-        // the boss approaches you
-        glm::vec3 bossPosPrec = bossPos;
-        float bossPosXIncrFact = cos(dirBossYou);
-        float bossPosZIncrFact = sin(dirBossYou);
-        const float minIncrToApproach = 0.05f;//to avoid lag
-        if(abs(bossPosXIncrFact) < minIncrToApproach){
-            bossPosXIncrFact = 0.0f;
-        }
-        if(abs(bossPosZIncrFact) < minIncrToApproach){
-            bossPosZIncrFact = 0.0f;
-        }
-        float bossPosXIncr = BOSS_MOVE_SPEED * bossPosXIncrFact;
-        float bossPosZIncr = BOSS_MOVE_SPEED * bossPosZIncrFact;
-        bossPos.x = bossPos.x + bossPosXIncr;
-        bossPos.z = bossPos.z + bossPosZIncr;
-        if(bossPos.x < xStartLimitBossPos || bossPos.x > xEndLimitBossPos){// the boss can't exit from its area
-            bossPos.x = bossPosPrec.x;
-        }
-        if(bossPos.z < zStartLimitBossPos || bossPos.z > zEndLimitBossPos){
-            bossPos.z = bossPosPrec.z;
+        // the boss approaches you (in case the animation that the boss fight is started is finished)
+        if(bossFightStartedAnimationFinished){
+            glm::vec3 bossPosPrec = bossPos;
+            float bossPosXIncrFact = cos(dirBossYou);
+            float bossPosZIncrFact = sin(dirBossYou);
+            const float minIncrToApproach = 0.05f;//to avoid lag
+            if(abs(bossPosXIncrFact) < minIncrToApproach){
+                bossPosXIncrFact = 0.0f;
+            }
+            if(abs(bossPosZIncrFact) < minIncrToApproach){
+                bossPosZIncrFact = 0.0f;
+            }
+            float bossPosXIncr = BOSS_MOVE_SPEED * bossPosXIncrFact;
+            float bossPosZIncr = BOSS_MOVE_SPEED * bossPosZIncrFact;
+            bossPos.x = bossPos.x + bossPosXIncr;
+            bossPos.z = bossPos.z + bossPosZIncr;
+            if(bossPos.x < xStartLimitBossPos || bossPos.x > xEndLimitBossPos){// the boss can't exit from its area
+                bossPos.x = bossPosPrec.x;
+            }
+            if(bossPos.z < zStartLimitBossPos || bossPos.z > zEndLimitBossPos){
+                bossPos.z = bossPosPrec.z;
+            }
         }
         
         // in case you are too near to the boss the boss the boss deals damage to you and you walk away morover you lose some life
         const float minDistFromTheBoss = 1.0f;
         const float maxDistFromTheBoss = 2.0f;//distance to walk away from the boss
         if(distBossYou < minDistFromTheBoss || youNeedToWalkAwayFromTheBoss){
+            if(youNeedToWalkAwayFromTheBoss == false){//in this instant the hurts you
+                std::cout << "the boss hurts you\n";
+                const float fireChargingPenality = 0.75f;//a penality to wait some time to fire if the boss hurts you
+                fireCharging = fireChargingPenality;
+                //implement here that you take damage and you lose some of you life
+            }
             youNeedToWalkAwayFromTheBoss = true;
             float walkAwayXIncr = WALK_AWAY_SPEED * cos(dirBossYou);
             float walkAwayZIncr = WALK_AWAY_SPEED * sin(dirBossYou);
@@ -733,22 +762,30 @@ class LabyrinthSurvival : public BaseProject {
             if(distBossYou >= maxDistFromTheBoss){
                 youNeedToWalkAwayFromTheBoss = false;
             }
-            //implement here that you take damage and you lose some of you life
         }
         
         // in case you fire to the boss
         const float timeToChargeTheFire = 0.5f;//needed time to fire again
-        static float fireCharging = 0.0f;//remaining time to charge the fire
         fireCharging -= deltaT;
         if(fireCharging < 0.0f){
             fireCharging = 0.0f;
         }
-        // in case you use the fire command
-        if(fire){
+        // in case you use the fire command and the boss fight is started
+        if(fire && bossFightStarted){
             if(fireCharging <= 0){//the fire need to be charged
                 fireCharging = timeToChargeTheFire;
-                std::cout << "You have fired\n";
-                
+                const float minDistFromTheBossToFire = 3.0f;
+                const float minDistAngleToFireTheBoss = glm::radians(30.0f);
+                if(distBossYou <= minDistFromTheBossToFire){
+                    // FINIRE DI SISTEMARE IL COMBATTIMENTO QUI
+                    if(abs(dirBossYou - CamAlpha) < minDistAngleToFireTheBoss){
+                        std::cout << "You have fired! (you are near to the boss and you are watching the boss with your camera)\n";
+                    } else {
+                        std::cout << "You have fired but you are not watching the boss with your camera; you are near to the boss\n";
+                    }
+                } else {
+                    std::cout << "You have fired but you are too distant from the boss\n";
+                }
             }
         }
 		
@@ -816,7 +853,7 @@ class LabyrinthSurvival : public BaseProject {
         glm::quat bossRotQuat = glm::quat(glm::vec3(0, -bossRot, 0)) *//equivalent quat of bossRot in radians anticlockwise
                          glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                          glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
-        ubo.mMat = MakeWorldMatrix(bossPos, bossRotQuat, bossScale) * baseTr;//translate and rotate the boss to locate
+        ubo.mMat = MakeWorldMatrix(bossPos, bossRotQuat, glm::vec3(bossScale)) * baseTr;//translate and rotate the boss to locate
         ubo.mvpMat = ViewPrj * ubo.mMat;
         ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
         DSB.map(currentImage, &ubo, sizeof(ubo), 0);
@@ -1124,13 +1161,23 @@ class LabyrinthSurvival : public BaseProject {
                             if(locatingWhat == 0){//player
                                 out[i][j] = 'P';
                                 CamPos = glm::vec3(j+0.5, 0.5, i+0.5);//set starting position
+                                //in case you are watching to the wall, CamAlpha is rotated so that you start without having a wall in front of you
+                                if(out[i-1][j] == '#'){
+                                    CamAlpha = glm::radians(90.0f);
+                                    if(out[i][j-1] == '#'){
+                                        CamAlpha = glm::radians(180.0f);
+                                        if(out[i+1][j] == '#'){
+                                            CamAlpha = glm::radians(270.0f);
+                                        }
+                                    }
+                                }
                                 locatingWhat++;
                             } else if(locatingWhat == 1){//keys
                                 out[i][j] = 'K';
                                 keyPos.push_back(glm::vec3(j+0.5, 0.5, i+0.5));
                                 xKeyPos.push_back(j);
                                 yKeyPos.push_back(i);
-                                tookKey.push_back(false);
+                                tookKey.push_back(false);//false
                                 counterForCurrentObject++;
                                 if(counterForCurrentObject >= numOfKeys){
                                     counterForCurrentObject = 0;
