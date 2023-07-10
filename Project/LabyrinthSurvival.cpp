@@ -84,6 +84,14 @@ class LabyrinthSurvival : public BaseProject {
     bool bossFightStartedAnimationFinished = false;//when the boss fight start there is an animation that the boss appear
     bool youNeedToWalkAwayFromTheBoss = false;//in case the boss hurts you and you have to walk away your movement is temporanely locked
     float fireCharging = 0.0f;//remaining time to charge the fire
+    float tiltTimeCounter = 0.0f;//in case, during the boss fight, you are slammed against the wall, you are tilted and you can't move: this var is to keep the time you are tilt
+    
+    //variables for the boss partner (the boss has a partner that sometimes approaches you and sometimes goes away from you)
+    const float timeBossApproachYou = 4.5f;//how much time the boss approaches you
+    const float timeBossGoesAwayFromYou = 0.75f;//how much time the boss goes away from you
+    const float PenalityMultiplierBossGoesAwayFromYou = 4.0f;//when the boss goes away from you how faster the boss to go away respect to when the boss approaches you
+    float timeBossPartnerCounter = 0.0f;//time counter for the partner of the boss
+    float bossPartnerMultiplier = 1.0f;//if positive the boss approaches you; if negative the boss goes away from you
     
 	// Other application parameters
 	glm::vec3 CamPos = glm::vec3(0.5, 0.5, 10.0);//camera position
@@ -561,14 +569,17 @@ class LabyrinthSurvival : public BaseProject {
 		glm::vec3 uz = glm::rotate(glm::mat4(1.0f), CamAlpha, glm::vec3(0,1,0)) * glm::vec4(0,0,-1,1);
         CamPosPrec = CamPos;
         if(!youNeedToWalkAwayFromTheBoss){//normally you move using W A S D keys; but, in case the boss hurts you and you have to walk away from him, your movements are temporanely locked
-            CamPos = CamPos + MOVE_SPEED * m.x * ux * deltaT;
-            CamPos = CamPos + MOVE_SPEED * m.y * glm::vec3(0,1,0) * deltaT;
-            CamPos = CamPos + MOVE_SPEED * m.z * uz * deltaT;
+            if(tiltTimeCounter <= 0.0f){//moreover, if you are tilt (because during the boss fight you are slammed against the wall) you can't move for a while
+                CamPos = CamPos + MOVE_SPEED * m.x * ux * deltaT;
+                CamPos = CamPos + MOVE_SPEED * m.y * glm::vec3(0,1,0) * deltaT;
+                CamPos = CamPos + MOVE_SPEED * m.z * uz * deltaT;
+            }
         }
+        
+        const float minDistToWalls = 0.15f;//min distance to walls you have to mantain when moving in the labyrinth (otherwise you see through the walls)
         
         //You can't go over a wall or pass through the door if there are other keys to take in the labyrinth
         if(labyrinthShapeInitialized){
-            const float minDistToWalls = 0.15f;
             //you can't pass through a wall
             if(labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x-minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x-minDistToWalls)] == true){
                 CamPos = CamPosPrec;//return to the previous position
@@ -720,7 +731,57 @@ class LabyrinthSurvival : public BaseProject {
             bossRot -= glm::radians(360.0f);
         }
         
-        // the boss approaches you (in case the animation that the boss fight is started is finished)
+        // in case you are too near to the boss the boss the boss deals damage to you and you walk away morover you lose some life
+        const float minDistFromTheBoss = 1.0f;
+        const float maxDistFromTheBoss = 2.0f;//distance to walk away from the boss
+        if(distBossYou < minDistFromTheBoss || youNeedToWalkAwayFromTheBoss){
+            if(youNeedToWalkAwayFromTheBoss == false){//in this instant the boss hurts you
+                std::cout << "the boss hurts you\n";
+                const float fireChargingPenality = 0.75f;//a penality to wait some time to fire if the boss hurts you
+                fireCharging = fireChargingPenality;
+                //implement here that you take damage and you lose some of you life
+            }
+            youNeedToWalkAwayFromTheBoss = true;
+            float walkAwayXIncr = WALK_AWAY_SPEED * cos(dirBossYou);
+            float walkAwayZIncr = WALK_AWAY_SPEED * sin(dirBossYou);
+            CamPos.x = CamPos.x + walkAwayXIncr;
+            CamPos.z = CamPos.z + walkAwayZIncr;
+            //in this case that you are walking away from the boss, we have to check that you are not going over a wall or you are exiting from the boss fight area; else it menas that you are slammed against the wall and you also take a lot of extra damages and there are some other penalities
+            if(youNeedToWalkAwayFromTheBoss){
+                if(labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x-minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x-minDistToWalls)] == true || CamPos.x > originalDoorPos.x){
+                    youNeedToWalkAwayFromTheBoss = false;//you are slammed against the wall and you stop to walk away from the boss
+                    CamPos = CamPosPrec;//remain to that position (you can't go over the wall)
+                    timeBossPartnerCounter = timeBossApproachYou;//the partner of the boss changes to go away from you; in this way you have the possibility to return to fight the boss
+                    const float fireChargingPenalitySlammedAgainistWall = 1.5f;//in case you take damage being slammed against the wall, the penality to wait some time to fire is different
+                    fireCharging = fireChargingPenalitySlammedAgainistWall;
+                    const float tiltTimePenality = 0.25f;//morover another penality is that you are tilt and you can't move for a while
+                    tiltTimeCounter = tiltTimePenality;
+                    std::cout << "you are slammed against the wall and you take extra damages\n";
+                    //implement here you take extra damages
+                }
+            }
+            if(distBossYou >= maxDistFromTheBoss){
+                youNeedToWalkAwayFromTheBoss = false;//you are enough distant from the boss and so you stop to go away from him
+            }
+        }
+        
+        // in case, during the boss fight, you are slammed against the wall, you are tilted and you can't move for a while: here this time counter is managed
+        tiltTimeCounter -= deltaT;
+        if(tiltTimeCounter < 0.0f){
+            tiltTimeCounter = 0.0f;
+        }
+        
+        // the boss has a partner that sometimes approaches you and sometimes goes away from you
+        //here there is managed the time (when the boss approaches you and when the boss goes away from you) and the multiplier bossPartnerMultiplier for the movement of the boss is setted
+        timeBossPartnerCounter += deltaT;
+        if(timeBossPartnerCounter < timeBossApproachYou){
+            bossPartnerMultiplier = 1.0f;
+        } else if(timeBossPartnerCounter < timeBossApproachYou + timeBossGoesAwayFromYou){
+            bossPartnerMultiplier = -PenalityMultiplierBossGoesAwayFromYou;
+        } else {
+            timeBossPartnerCounter = 0.0f;
+        }
+        //here, in case the animation that the boss fight is started is finished, the movement of the boss is managed
         if(bossFightStartedAnimationFinished){
             glm::vec3 bossPosPrec = bossPos;
             float bossPosXIncrFact = cos(dirBossYou);
@@ -732,8 +793,8 @@ class LabyrinthSurvival : public BaseProject {
             if(abs(bossPosZIncrFact) < minIncrToApproach){
                 bossPosZIncrFact = 0.0f;
             }
-            float bossPosXIncr = BOSS_MOVE_SPEED * bossPosXIncrFact;
-            float bossPosZIncr = BOSS_MOVE_SPEED * bossPosZIncrFact;
+            float bossPosXIncr = BOSS_MOVE_SPEED * bossPosXIncrFact * bossPartnerMultiplier;
+            float bossPosZIncr = BOSS_MOVE_SPEED * bossPosZIncrFact * bossPartnerMultiplier;
             bossPos.x = bossPos.x + bossPosXIncr;
             bossPos.z = bossPos.z + bossPosZIncr;
             if(bossPos.x < xStartLimitBossPos || bossPos.x > xEndLimitBossPos){// the boss can't exit from its area
@@ -744,26 +805,6 @@ class LabyrinthSurvival : public BaseProject {
             }
         }
         
-        // in case you are too near to the boss the boss the boss deals damage to you and you walk away morover you lose some life
-        const float minDistFromTheBoss = 1.0f;
-        const float maxDistFromTheBoss = 2.0f;//distance to walk away from the boss
-        if(distBossYou < minDistFromTheBoss || youNeedToWalkAwayFromTheBoss){
-            if(youNeedToWalkAwayFromTheBoss == false){//in this instant the hurts you
-                std::cout << "the boss hurts you\n";
-                const float fireChargingPenality = 0.75f;//a penality to wait some time to fire if the boss hurts you
-                fireCharging = fireChargingPenality;
-                //implement here that you take damage and you lose some of you life
-            }
-            youNeedToWalkAwayFromTheBoss = true;
-            float walkAwayXIncr = WALK_AWAY_SPEED * cos(dirBossYou);
-            float walkAwayZIncr = WALK_AWAY_SPEED * sin(dirBossYou);
-            CamPos.x = CamPos.x + walkAwayXIncr;
-            CamPos.z = CamPos.z + walkAwayZIncr;
-            if(distBossYou >= maxDistFromTheBoss){
-                youNeedToWalkAwayFromTheBoss = false;
-            }
-        }
-        
         // in case you fire to the boss
         const float timeToChargeTheFire = 0.5f;//needed time to fire again
         fireCharging -= deltaT;
@@ -771,21 +812,36 @@ class LabyrinthSurvival : public BaseProject {
             fireCharging = 0.0f;
         }
         // in case you use the fire command and the boss fight is started
-        if(fire && bossFightStarted){
-            if(fireCharging <= 0){//the fire need to be charged
-                fireCharging = timeToChargeTheFire;
-                const float minDistFromTheBossToFire = 3.0f;
-                const float minDistAngleToFireTheBoss = glm::radians(30.0f);
-                if(distBossYou <= minDistFromTheBossToFire){
-                    // FINIRE DI SISTEMARE IL COMBATTIMENTO QUI
-                    if(abs(dirBossYou - CamAlpha) < minDistAngleToFireTheBoss){
-                        std::cout << "You have fired! (you are near to the boss and you are watching the boss with your camera)\n";
+        if(fire){
+            if(bossFightStarted){
+                if(fireCharging <= 0){//the fire need to be charged
+                    fireCharging = timeToChargeTheFire;
+                    const float minDistFromTheBossToFire = 3.0f;
+                    const float minDistAngleToFireTheBoss = glm::radians(30.0f);
+                    if(distBossYou <= minDistFromTheBossToFire){//to fire the boss you need to be near to it
+                        float dirYouBoss = glm::radians(90.0f) - CamAlpha;//the direction you are watching has this relation from CamAlpha; this value (after a moudle 360 degre adjustment) can be compared with dirBossYou to check if you are looking to the boss direction
+                        while(dirYouBoss <= glm::radians(0.0f)){
+                            dirYouBoss += glm::radians(360.0f);
+                        }
+                        while(dirYouBoss > glm::radians(360.0f)){
+                            dirYouBoss -= glm::radians(360.0f);
+                        }
+                        if(abs(dirBossYou - dirYouBoss) < minDistAngleToFireTheBoss || abs(dirBossYou - dirYouBoss) > glm::radians(360.0f) - minDistAngleToFireTheBoss){//to fire the boss you need also to watch it with your camera
+                            float firePowFloat = (pow((minDistFromTheBossToFire - distBossYou),2)*50.0f)+2.0f;//the power of your fire depends by the distance you manage to fire the boss! If you are nearer to the boss you inflict more damages but you are more in danger in the boss hurts you
+                            int firePow = firePowFloat;//num of damages you inflict to the boss
+                            std::cout << "You have fired!!! (pow: ";
+                            std::cout << firePow;
+                            std::cout << ") (you are near to the boss and you are watching the boss with your camera)\n";
+                            //implement here that the boss takes damages
+                        } else {
+                            std::cout << "You have fired but you are not watching the boss with your camera; you are near to the boss\n";
+                        }
                     } else {
-                        std::cout << "You have fired but you are not watching the boss with your camera; you are near to the boss\n";
+                        std::cout << "You have fired but you are too distant from the boss\n";
                     }
-                } else {
-                    std::cout << "You have fired but you are too distant from the boss\n";
                 }
+            } else {
+                std::cout << "You can't fire if the boss fight isn't started\n";
             }
         }
 		
@@ -920,7 +976,7 @@ class LabyrinthSurvival : public BaseProject {
         bossPos = glm::vec3(startYBossFight+(yLenghtBossFight/2), 0.0, startXBossFight+(xLenghtBossFight/2)+0.5);//locate the boss (position)
         bossRot = 0.0f;//locate the boss (rotation)
         // Limit the movements of the boss
-        const float minDistFromWallBoss = 2.5f;
+        const float minDistFromWallBoss = 0.75f;
         xStartLimitBossPos = startYBossFight + (minDistFromWallBoss + 1.0f);
         xEndLimitBossPos = endYBossFight - (minDistFromWallBoss + 1.0f);
         zStartLimitBossPos = startXBossFight + (minDistFromWallBoss + 1.0f);
