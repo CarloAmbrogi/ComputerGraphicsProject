@@ -86,12 +86,12 @@ class LabyrinthSurvival : public BaseProject {
     float fireCharging = 0.0f;//remaining time to charge the fire
     float tiltTimeCounter = 0.0f;//in case, during the boss fight, you are slammed against the wall, you are tilted and you can't move: this var is to keep the time you are tilt
     
-    //variables for the boss partner (the boss has a partner that sometimes approaches you and sometimes goes away from you)
+    //variables for the boss pattern (the boss has a pattern that sometimes approaches you and sometimes goes away from you)
     const float timeBossApproachYou = 4.5f;//how much time the boss approaches you
     const float timeBossGoesAwayFromYou = 0.75f;//how much time the boss goes away from you
     const float PenalityMultiplierBossGoesAwayFromYou = 4.0f;//when the boss goes away from you how faster the boss to go away respect to when the boss approaches you
-    float timeBossPartnerCounter = 0.0f;//time counter for the partner of the boss
-    float bossPartnerMultiplier = 1.0f;//if positive the boss approaches you; if negative the boss goes away from you
+    float timeBossPatternCounter = 0.0f;//time counter for the parttner of the boss
+    float bossPatternMultiplier = 1.0f;//if positive the boss approaches you; if negative the boss goes away from you
     
 	// Other application parameters
 	glm::vec3 CamPos = glm::vec3(0.5, 0.5, 10.0);//camera position
@@ -663,7 +663,7 @@ class LabyrinthSurvival : public BaseProject {
                 std::cout << "You took a key (remaining keys: ";
                 std::cout << howManyRemainingKeys;
                 std::cout << ")\n";
-                //implement here that the text changes when you take a key
+                //TODO implement here that the text changes when you take a key
             }
         }
         
@@ -684,7 +684,7 @@ class LabyrinthSurvival : public BaseProject {
                 std::cout << "You took a food\n";
                 tookFood[i] = true;
                 foodPos[i] = notVisiblePosition;
-                //implement here the text that you recover some life when you take a food
+                //TODO implement here the text that you recover some life when you take a food
             }
         }
         
@@ -739,7 +739,7 @@ class LabyrinthSurvival : public BaseProject {
                 std::cout << "the boss hurts you\n";
                 const float fireChargingPenality = 0.75f;//a penality to wait some time to fire if the boss hurts you
                 fireCharging = fireChargingPenality;
-                //implement here that you take damage and you lose some of you life
+                //TODO implement here that you take damage and you lose some of you life
             }
             youNeedToWalkAwayFromTheBoss = true;
             float walkAwayXIncr = WALK_AWAY_SPEED * cos(dirBossYou);
@@ -751,13 +751,13 @@ class LabyrinthSurvival : public BaseProject {
                 if(labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x-minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x-minDistToWalls)] == true || CamPos.x > originalDoorPos.x){
                     youNeedToWalkAwayFromTheBoss = false;//you are slammed against the wall and you stop to walk away from the boss
                     CamPos = CamPosPrec;//remain to that position (you can't go over the wall)
-                    timeBossPartnerCounter = timeBossApproachYou;//the partner of the boss changes to go away from you; in this way you have the possibility to return to fight the boss
+                    timeBossPatternCounter = timeBossApproachYou;//the pattern of the boss changes to go away from you; in this way you have the possibility to return to fight the boss
                     const float fireChargingPenalitySlammedAgainistWall = 1.5f;//in case you take damage being slammed against the wall, the penality to wait some time to fire is different
                     fireCharging = fireChargingPenalitySlammedAgainistWall;
                     const float tiltTimePenality = 0.25f;//morover another penality is that you are tilt and you can't move for a while
                     tiltTimeCounter = tiltTimePenality;
                     std::cout << "you are slammed against the wall and you take extra damages\n";
-                    //implement here you take extra damages
+                    //TODO implement here you take extra damages
                 }
             }
             if(distBossYou >= maxDistFromTheBoss){
@@ -771,15 +771,15 @@ class LabyrinthSurvival : public BaseProject {
             tiltTimeCounter = 0.0f;
         }
         
-        // the boss has a partner that sometimes approaches you and sometimes goes away from you
-        //here there is managed the time (when the boss approaches you and when the boss goes away from you) and the multiplier bossPartnerMultiplier for the movement of the boss is setted
-        timeBossPartnerCounter += deltaT;
-        if(timeBossPartnerCounter < timeBossApproachYou){
-            bossPartnerMultiplier = 1.0f;
-        } else if(timeBossPartnerCounter < timeBossApproachYou + timeBossGoesAwayFromYou){
-            bossPartnerMultiplier = -PenalityMultiplierBossGoesAwayFromYou;
+        // the boss has a pattern that sometimes approaches you and sometimes goes away from you
+        //here there is managed the time (when the boss approaches you and when the boss goes away from you) and the multiplier bossPatternMultiplier for the movement of the boss is setted
+        timeBossPatternCounter += deltaT;
+        if(timeBossPatternCounter < timeBossApproachYou){
+            bossPatternMultiplier = 1.0f;
+        } else if(timeBossPatternCounter < timeBossApproachYou + timeBossGoesAwayFromYou){
+            bossPatternMultiplier = -PenalityMultiplierBossGoesAwayFromYou;
         } else {
-            timeBossPartnerCounter = 0.0f;
+            timeBossPatternCounter = 0.0f;
         }
         //here, in case the animation that the boss fight is started is finished, the movement of the boss is managed
         if(bossFightStartedAnimationFinished){
@@ -793,8 +793,8 @@ class LabyrinthSurvival : public BaseProject {
             if(abs(bossPosZIncrFact) < minIncrToApproach){
                 bossPosZIncrFact = 0.0f;
             }
-            float bossPosXIncr = BOSS_MOVE_SPEED * bossPosXIncrFact * bossPartnerMultiplier;
-            float bossPosZIncr = BOSS_MOVE_SPEED * bossPosZIncrFact * bossPartnerMultiplier;
+            float bossPosXIncr = BOSS_MOVE_SPEED * bossPosXIncrFact * bossPatternMultiplier;
+            float bossPosZIncr = BOSS_MOVE_SPEED * bossPosZIncrFact * bossPatternMultiplier;
             bossPos.x = bossPos.x + bossPosXIncr;
             bossPos.z = bossPos.z + bossPosZIncr;
             if(bossPos.x < xStartLimitBossPos || bossPos.x > xEndLimitBossPos){// the boss can't exit from its area
@@ -820,7 +820,7 @@ class LabyrinthSurvival : public BaseProject {
                     const float minDistAngleToFireTheBoss = glm::radians(30.0f);
                     if(distBossYou <= minDistFromTheBossToFire){//to fire the boss you need to be near to it
                         float dirYouBoss = glm::radians(90.0f) - CamAlpha;//the direction you are watching has this relation from CamAlpha; this value (after a moudle 360 degre adjustment) can be compared with dirBossYou to check if you are looking to the boss direction
-                        while(dirYouBoss <= glm::radians(0.0f)){
+                        while(dirYouBoss <= glm::radians(0.0f)){//TODO questo while si può spostare
                             dirYouBoss += glm::radians(360.0f);
                         }
                         while(dirYouBoss > glm::radians(360.0f)){
@@ -832,7 +832,7 @@ class LabyrinthSurvival : public BaseProject {
                             std::cout << "You have fired!!! (pow: ";
                             std::cout << firePow;
                             std::cout << ") (you are near to the boss and you are watching the boss with your camera)\n";
-                            //implement here that the boss takes damages
+                            //TODO implement here that the boss takes damages
                         } else {
                             std::cout << "You have fired but you are not watching the boss with your camera; you are near to the boss\n";
                         }
