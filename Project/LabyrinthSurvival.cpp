@@ -2,16 +2,17 @@
 #include "TextMaker.hpp"
 
 std::vector<SingleText> textToVisualize = {
-    {1, {"Welcome in LabyrinthSurvival", "", "", ""}, 0, 0},//0
-    {1, {"There are different keys to take", "", "", ""}, 0, 0},//1
-    {1, {"There are other 5 keys to take", "", "", ""}, 0, 0},//2
-    {1, {"There are other 4 keys to take", "", "", ""}, 0, 0},//3
-    {1, {"There are other 3 keys to take", "", "", ""}, 0, 0},//4
-    {1, {"There are other 2 keys to take", "", "", ""}, 0, 0},//5
-    {1, {"There is another 1 key to take", "", "", ""}, 0, 0},//6
-    {1, {"Now you can open the door", "", "", ""}, 0, 0},//7
-    {1, {"Labyrinth completed", "", "", ""}, 0, 0},//8
-    {1, {"Labyrinth failed", "", "", ""}, 0, 0},//9
+    {1, {"", "", "", ""}, 0, 0},//0
+    {1, {"Welcome in LabyrinthSurvival", "", "", ""}, 0, 0},//1
+    {1, {"There are different keys to take", "", "", ""}, 0, 0},//2
+    {1, {"There are other 5 keys to take", "", "", ""}, 0, 0},//3
+    {1, {"There are other 4 keys to take", "", "", ""}, 0, 0},//4
+    {1, {"There are other 3 keys to take", "", "", ""}, 0, 0},//5
+    {1, {"There are other 2 keys to take", "", "", ""}, 0, 0},//6
+    {1, {"There is another 1 key to take", "", "", ""}, 0, 0},//7
+    {1, {"Now you can open the door", "", "", ""}, 0, 0},//8
+    {1, {"Labyrinth completed", "", "", ""}, 0, 0},//9
+    {1, {"Labyrinth failed", "", "", ""}, 0, 0},//10
 };
 
 // num rows and cols labyrinth
@@ -26,9 +27,15 @@ struct UniformBufferObject {
 };
 
 struct GlobalUniformBufferObject {
-	alignas(16) glm::vec3 lightPos[2];
+	alignas(32) glm::vec3 lightPos[2];
 	alignas(16) glm::vec4 lightColor;
 	alignas(16) glm::vec3 eyePos;
+};
+
+struct UniformBufferObjectUI {
+    alignas(16) glm::mat4 mvpMat;
+    alignas(16) glm::mat4 mMat;
+    alignas(16) glm::mat4 nMat;
 };
 
 class LabyrinthSurvival;
@@ -39,18 +46,29 @@ class LabyrinthSurvival : public BaseProject {
 	// Here you list all the Vulkan objects you need:
 	
 	// Descriptor Layouts [what will be passed to the shaders]
-	DescriptorSetLayout DSL1{};
+	DescriptorSetLayout DSL1{};//main descriptor set layout
+    DescriptorSetLayout DSLUI{};//descriptor set for UI elements
 
 	// Pipelines [Shader couples]
-	Pipeline P1{};
+	Pipeline P1{};//main pipeline
+    Pipeline PUI{};//pipeline for the UI
 
 	// Models, textures and Descriptors (values assigned to the uniforms)
 
     Model M{};//Model M for the labyrinth
     DescriptorSet DS;//DescriptorSet DS for the labyrinth
-    Texture TL, TW, TD, TB, TG, TK, TF;//Texture for the labyrinth, for the wall, the door, the boss, the ground, for the keys and for the food
+    DescriptorSet DSStartBarYourHP;//DescriptorSet DSStartBarYourHP for the bar of your HP (start)
+    DescriptorSet DSEndBarYourHP;//DescriptorSet DSEndBarYourHP for the bar of your HP (end)
+    DescriptorSet DSMidBarYourHP;//DescriptorSet DSMidBarYourHP for the bar of your HP (mid)
+    DescriptorSet DSyourHPwritten;//DescriptorSet DSyourHPwritten for the written about your HP
+    Texture TL, TW, TD, TB, TG, TK, TF;//Texture for the labyrinth, for the wall, the door, the boss, the ground, for the keys, for the food, for your HP bar
+    Texture TStartBarYourHP, TEndBarYourHP, TMidBarYourHP, TyourHPwritten;//Texture for your HP bar (start, end and mid) and for the written about your HP
     std::vector<Model> MK;//model MK for the keys
     std::vector<Model> MF;//model MF for the food
+    Model MStartBarYourHP{};//Model MStartBarYourHP for the bar of your HP (start)
+    Model MEndBarYourHP{};//Model MStartBarYourHP for the bar of your HP (end)
+    Model MMidBarYourHP{};//Model MStartBarYourHP for the bar of your HP (mid)
+    Model MyourHPwritten{};//Model MyourHPwritten for the written about your HP
     std::vector<DescriptorSet> DSK;//DescriptorSet DSK for the keys
     std::vector<DescriptorSet> DSF;//DescriptorSet DSF for the food
     std::vector<Model> MW;//model MW for the walls
@@ -86,6 +104,19 @@ class LabyrinthSurvival : public BaseProject {
     float fireCharging = 0.0f;//remaining time to charge the fire
     float tiltTimeCounter = 0.0f;//in case, during the boss fight, you are slammed against the wall, you are tilted and you can't move: this var is to keep the time you are tilt
     
+    // Others variables useful when playing
+    float yourHP = 40.0f;//at the beginning you have 40 HP
+    bool youLose = false;//if you lose all HP you lose
+    
+    // parameters to place elements in the UI
+    const float startHPBarX = -0.8f;
+    const float startHPBarY = -1.0f;
+    const float dimHPBar = 0.025f;
+    const float startyourHPwrittenY = -1.0125f;
+    const float yourHPwrittenOffsetFromBar = 0.15f;
+    const float dimYourHPwrittenX = 0.14f;
+    const float dimYourHPwrittenY = 0.05f;
+    
     //variables for the boss pattern (the boss has a pattern that sometimes approaches you and sometimes goes away from you)
     const float timeBossApproachYou = 4.5f;//how much time the boss approaches you
     const float timeBossGoesAwayFromYou = 0.75f;//how much time the boss goes away from you
@@ -100,6 +131,8 @@ class LabyrinthSurvival : public BaseProject {
     float CamBeta = glm::radians(0.0f);
 	float Ar;//aspect ratio
     glm::vec3 notVisiblePosition = glm::vec3(-1, -1, -1);//a position to place an object witch disappear
+    const float notVisibleUIXPosition = -100.0f;//a position X to place an object of the UI witch disappear
+    const float notVisibleUIYPosition = -100.0f;//a position Y to place an object of the UI witch disappear
     
     //parameters for the key pos, rot and scale
     std::vector<glm::vec3> keyPos;
@@ -172,6 +205,35 @@ class LabyrinthSurvival : public BaseProject {
 		std::cout << "Window resized to: " << w << " x " << h << "\n";
 		Ar = (float)w / (float)h;
 	}
+    
+    //set the model for a squared UI element locating the vertices
+    void addUiElement(Model * model, float xStart, float yStart, float xLenght, float yLenght){
+        const float uiDist = 0.5f;
+        const float uiDim = 0.25f;
+        const float uiOffset = 0.2f;
+        Vertex vertex1{};
+        vertex1.pos = {(xStart+uiOffset)*uiDim, uiDist, (-yStart-yLenght-uiOffset)*uiDim};
+        vertex1.texCoord = {0, 1};
+        model->vertices.push_back(vertex1);
+        Vertex vertex2{};
+        vertex2.pos = {(xStart+uiOffset)*uiDim, uiDist, (-yStart-uiOffset)*uiDim};
+        vertex2.texCoord = {0, 0};
+        model->vertices.push_back(vertex2);
+        Vertex vertex3{};
+        vertex3.pos = {(xStart+uiOffset+xLenght)*uiDim, uiDist, (-yStart-yLenght-uiOffset)*uiDim};
+        vertex3.texCoord = {1, 1};
+        model->vertices.push_back(vertex3);
+        Vertex vertex4{};
+        vertex4.pos = {(xStart+uiOffset+xLenght)*uiDim, uiDist, (-yStart-uiOffset)*uiDim};
+        vertex4.texCoord = {1, 0};
+        model->vertices.push_back(vertex4);
+        model->indices.push_back(0);
+        model->indices.push_back(1);
+        model->indices.push_back(2);
+        model->indices.push_back(1);
+        model->indices.push_back(2);
+        model->indices.push_back(3);
+    }
 	
 	// Here you load and setup all your Vulkan Models and Texutures.
 	// Here you also create your Descriptor set layouts and load the shaders for the pipelines
@@ -179,22 +241,36 @@ class LabyrinthSurvival : public BaseProject {
 		// Descriptor Layouts [what will be passed to the shaders]
         //std::cout << "DSL\n";
 		DSL1.init(this, {
-					// this array contains the binding:
-					// first  element : the binding number
-					// second element : the type of element (buffer or texture)
-					// third  element : the pipeline stage where it will be used
-					{0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
-					{1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS},
-                    {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
-				  });
-
+            // this array contains the binding:
+            // first  element : the binding number
+            // second element : the type of element (buffer or texture)
+            // third  element : the pipeline stage where it will be used
+            {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
+            {1, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_ALL_GRAPHICS},
+            {2, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_FRAGMENT_BIT}
+          });
+        
+        DSLUI.init(this, {
+            // this array contains the binding:
+            // first  element : the binding number
+            // second element : the type of element (buffer or texture)
+            // third  element : the pipeline stage where it will be used
+            {0, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, VK_SHADER_STAGE_VERTEX_BIT},
+            {1, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, VK_SHADER_STAGE_ALL_GRAPHICS}
+          });
+        
 		// Pipelines [Shader couples]
 		// The last array, is a vector of pointer to the layouts of the sets that will
 		// be used in this pipeline. The first element will be set 0, and so on..
         std::cout << "P1\n";
 		P1.init(this, "shaders/PhongVert.spv", "shaders/PhongFrag.spv", {&DSL1});
-		P1.setAdvancedFeatures(VK_COMPARE_OP_LESS, VK_POLYGON_MODE_FILL,
- 								    VK_CULL_MODE_NONE, false);
+        P1.setAdvancedFeatures(VK_COMPARE_OP_LESS, VK_POLYGON_MODE_FILL,
+                                     VK_CULL_MODE_NONE, false);
+        
+        std::cout << "PUI\n";
+        PUI.init(this, "shaders/uiVert.spv", "shaders/uiFrag.spv", {&DSLUI});
+        PUI.setAdvancedFeatures(VK_COMPARE_OP_LESS, VK_POLYGON_MODE_FILL,
+                                     VK_CULL_MODE_NONE, false);
 
 		// Models, textures and Descriptors (values assigned to the uniforms)
         
@@ -246,6 +322,7 @@ class LabyrinthSurvival : public BaseProject {
 		createMazeMesh(r, c, maze);
 		std::cout << "Mesh size: V=" << vPos.size() << ", I=" << vIdx.size() << "\n";
 
+        //Model of the labyrinth
         M.BP = this;
 		for(int i = 0; i < vPos.size(); i+=3) {
             Vertex vertex{};
@@ -276,17 +353,46 @@ class LabyrinthSurvival : public BaseProject {
 			}
 		}
         
+        //Models of the UI...
+        
+        //Model of your HP bar
+        MStartBarYourHP.BP = this;
+        addUiElement(&MStartBarYourHP, startHPBarX, startHPBarY, dimHPBar, dimHPBar);
+        MEndBarYourHP.BP = this;
+        addUiElement(&MEndBarYourHP, startHPBarX, startHPBarY, dimHPBar, dimHPBar);
+        MMidBarYourHP.BP = this;
+        addUiElement(&MMidBarYourHP, startHPBarX, startHPBarY, dimHPBar, dimHPBar);
+        MyourHPwritten.BP = this;
+        addUiElement(&MyourHPwritten, startHPBarX-yourHPwrittenOffsetFromBar, startyourHPwrittenY, dimYourHPwrittenX, dimYourHPwrittenY);
+        
+        //initialize textures
         TL.init(this, "textures/IMG_9647.png");
         TW.init(this, "textures/LowPolyDungeonsLite_Texture_01.png");
         TD.init(this, "textures/door.png");
-        TB.init(this, "textures/boss.png");
+        TB.init(this, "textures/bossTry2.png");
         TG.init(this, "textures/ground.png");
         TK.init(this, "textures/key.png");
         TF.init(this, "textures/food.png");
+        TStartBarYourHP.init(this, "textures/StartBarYourHP.png");
+        TEndBarYourHP.init(this, "textures/EndBarYourHP.png");
+        TMidBarYourHP.init(this, "textures/MidBarYourHP.png");
+        TyourHPwritten.init(this, "textures/yourHPwritten.png");
 
 		M.createVertexBuffer();
 		M.createIndexBuffer();
 		std::cout << "Created model: V=" << M.vertices.size() << ", I=" << M.indices.size() << "\n";
+        
+        MStartBarYourHP.createVertexBuffer();
+        MStartBarYourHP.createIndexBuffer();
+        
+        MEndBarYourHP.createVertexBuffer();
+        MEndBarYourHP.createIndexBuffer();
+        
+        MMidBarYourHP.createVertexBuffer();
+        MMidBarYourHP.createIndexBuffer();
+        
+        MyourHPwritten.createVertexBuffer();
+        MyourHPwritten.createIndexBuffer();
 
 		destroyMaze(r, c, maze);
         
@@ -297,12 +403,33 @@ class LabyrinthSurvival : public BaseProject {
 	void pipelinesAndDescriptorSetsInit() {
 		// This creates a new pipeline (with the current surface), using its shaders
 		P1.create();
+        PUI.create();
 
 		DS.init(this, &DSL1, {
 					{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
 					{1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr},
                     {2, TEXTURE, 0, &TL}
 				});
+        
+        DSStartBarYourHP.init(this, &DSLUI, {
+                    {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
+                    {1, TEXTURE, 0, &TStartBarYourHP}
+                });
+        
+        DSEndBarYourHP.init(this, &DSLUI, {
+                    {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
+                    {1, TEXTURE, 0, &TEndBarYourHP}
+                });
+        
+        DSMidBarYourHP.init(this, &DSLUI, {
+                    {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
+                    {1, TEXTURE, 0, &TMidBarYourHP}
+                });
+        
+        DSyourHPwritten.init(this, &DSLUI, {
+                    {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
+                    {1, TEXTURE, 0, &TyourHPwritten}
+                });
         
         for(int i = 0; i < effectiveNumberOfKeys; i++){
             DescriptorSet additiveDS;
@@ -362,8 +489,13 @@ class LabyrinthSurvival : public BaseProject {
 	// Here you destroy your pipelines and Descriptor Sets!
 	void pipelinesAndDescriptorSetsCleanup() {
 		P1.cleanup();
+        PUI.cleanup();
 		
 		DS.cleanup();
+        DSStartBarYourHP.cleanup();
+        DSEndBarYourHP.cleanup();
+        DSMidBarYourHP.cleanup();
+        DSyourHPwritten.cleanup();
         for(DescriptorSet ds : DSK){
             ds.cleanup();
         }
@@ -392,8 +524,17 @@ class LabyrinthSurvival : public BaseProject {
         TG.cleanup();
         TK.cleanup();
         TF.cleanup();
+        TStartBarYourHP.cleanup();
+        TEndBarYourHP.cleanup();
+        TMidBarYourHP.cleanup();
+        TyourHPwritten.cleanup();
         
 		M.cleanup();
+        
+        MStartBarYourHP.cleanup();
+        MEndBarYourHP.cleanup();
+        MMidBarYourHP.cleanup();
+        MyourHPwritten.cleanup();
         
         for (Model key : MK){
             key.cleanup();
@@ -411,8 +552,10 @@ class LabyrinthSurvival : public BaseProject {
         }
 
 		DSL1.cleanup();
-		
+        DSLUI.cleanup();
+        
 		P1.destroy();
+        PUI.destroy();
         
         txt.localCleanup();
 	}
@@ -422,7 +565,7 @@ class LabyrinthSurvival : public BaseProject {
 	// with their buffers and textures
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage) {
 
-		P1.bind(commandBuffer);
+		P1.bind(commandBuffer);//bind main pipeline
 
 		M.bind(commandBuffer);
 		DS.bind(commandBuffer, P1, currentImage);
@@ -445,6 +588,14 @@ class LabyrinthSurvival : public BaseProject {
         
 		vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(M.indices.size()), 1, 0, 0, 0);
         
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MStartBarYourHP.indices.size()), 1, 0, 0, 0);
+        
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MEndBarYourHP.indices.size()), 1, 0, 0, 0);
+        
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MMidBarYourHP.indices.size()), 1, 0, 0, 0);
+        
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MyourHPwritten.indices.size()), 1, 0, 0, 0);
+        
         for (int i = 0; i < MW.size(); i++) {
             MW[i].bind(commandBuffer);
             DSW[i].bind(commandBuffer, P1, currentImage);
@@ -464,6 +615,28 @@ class LabyrinthSurvival : public BaseProject {
             DSG[i].bind(commandBuffer, P1, currentImage);
             vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MG[i].indices.size()), 1, 0, 0, 0);
         }
+        
+        PUI.bind(commandBuffer);//bind pipeline for the UI
+        
+        MStartBarYourHP.bind(commandBuffer);
+        DSStartBarYourHP.bind(commandBuffer, PUI, currentImage);
+        vkCmdDrawIndexed(commandBuffer,
+                static_cast<uint32_t>(MStartBarYourHP.indices.size()), 1, 0, 0, 0);
+        
+        MEndBarYourHP.bind(commandBuffer);
+        DSEndBarYourHP.bind(commandBuffer, PUI, currentImage);
+        vkCmdDrawIndexed(commandBuffer,
+                static_cast<uint32_t>(MEndBarYourHP.indices.size()), 1, 0, 0, 0);
+        
+        MMidBarYourHP.bind(commandBuffer);
+        DSMidBarYourHP.bind(commandBuffer, PUI, currentImage);
+        vkCmdDrawIndexed(commandBuffer,
+                static_cast<uint32_t>(MMidBarYourHP.indices.size()), 1, 0, 0, 0);
+        
+        MyourHPwritten.bind(commandBuffer);
+        DSyourHPwritten.bind(commandBuffer, PUI, currentImage);
+        vkCmdDrawIndexed(commandBuffer,
+                static_cast<uint32_t>(MyourHPwritten.indices.size()), 1, 0, 0, 0);
 
         txt.populateCommandBuffer(commandBuffer, currentImage, 0);
 	}
@@ -477,6 +650,38 @@ class LabyrinthSurvival : public BaseProject {
         glm::mat4 Scale = glm::scale(glm::mat4(1), size);
         glm::mat4 M = Translation * Rotation * Scale;
         return M;
+    }
+    
+    glm::mat4 MakeWorldMatrixForUI(glm::vec3 UiPos, glm::vec3 UiPosOffset, glm::quat rVertical, glm::quat rHorizhontal, glm::vec3 size, float scaleMoveX, float scaleMoveY) {
+        //similar to MakeWorldMatrix but for the UI where the UiPosOffset translation is done then to move the UI according to this offset (dued to window dim and Aspect Ratio) after all rotations; moreover there is a scale to scale an UI element horizzontaly or vertically respect to the point 0,0 of the UI
+        const float uiMov = 0.05f;
+        const float uiOffset = 0.2f;
+        glm::mat4 ScaleMove = glm::mat4(scaleMoveX,0,0,0,0,1,0,0,0,0,scaleMoveY,0,0,0,0,1);
+        glm::mat4 backTr = glm::translate(glm::mat4(1), glm::vec3(-uiOffset*uiMov,0.0f,uiOffset*uiMov));
+        glm::mat4 backTrR = glm::translate(glm::mat4(1), glm::vec3(uiOffset*uiMov,0.0f,-uiOffset*uiMov));
+        glm::mat4 TranslationPos = glm::translate(glm::mat4(1), UiPos);
+        glm::mat4 TranslationPosOffset = glm::translate(glm::mat4(1), UiPosOffset);
+        glm::mat4 RotationVertical = glm::mat4(rVertical);
+        glm::mat4 RotationHorizhontal = glm::mat4(rHorizhontal);
+        glm::mat4 Scale = glm::scale(glm::mat4(1), size);
+        glm::mat4 M = TranslationPos * RotationHorizhontal * RotationVertical * TranslationPosOffset * backTrR * ScaleMove * backTr * Scale;
+        return M;
+    }
+    
+    glm::mat4 ObtainWorldMatrixForUI(float xMov, float yMov, float scaleMoveX, float scaleMoveY){
+        //objects for the UI are rotated by 90 degree vertically; then rotated basing on the camera rot, then translated basing on the position of the camera and finally adjusted in the window with some offset also depending by the Aspect Ratio of the window and the movement in case the element of the UI can move
+        const float uiMov = 0.05f;
+        glm::mat4 baseTr = glm::mat4(1.0f);
+        glm::quat UiRotVertical = glm::quat(glm::vec3((CamBeta + glm::radians(-90.0f)), 0, 0));
+        glm::quat UiRotHorizhontal = glm::quat(glm::vec3(0, CamAlpha, 0));
+        glm::vec3 UiPos = CamPos;
+        const float screenPosOffset = -0.013f;
+        const float startingAr = 4.0f/3.0f;
+        const float arAdjustmentDivider = 25.0f;
+        float arAdjustment = startingAr/arAdjustmentDivider - Ar/arAdjustmentDivider;
+        glm::vec3 UiPosOffset = glm::vec3(screenPosOffset + arAdjustment, 0.0f, 0.0f) + glm::vec3(xMov*uiMov, 0.0f, -yMov*uiMov);
+        const float sizeUi = 0.20f;
+        return MakeWorldMatrixForUI(UiPos, UiPosOffset, UiRotVertical, UiRotHorizhontal, glm::vec3(sizeUi), scaleMoveX, scaleMoveY) * baseTr;
     }
 
 	// Here is where you update the uniforms.
@@ -645,6 +850,17 @@ class LabyrinthSurvival : public BaseProject {
             }
         }
         
+        //periodically you lose some HP
+        yourHP -= deltaT * 0.5f;
+        if(yourHP < 0.0f){
+            yourHP = 0.0f;
+            if(!youLose){
+                youLose = true;
+                std::cout << "you lose!\n";
+                //TODO implemen here that the game end
+            }
+        }
+        
         //your position in the labyrinth
         int x = CamPos.x;
         int y = CamPos.z;
@@ -684,7 +900,8 @@ class LabyrinthSurvival : public BaseProject {
                 std::cout << "You took a food\n";
                 tookFood[i] = true;
                 foodPos[i] = notVisiblePosition;
-                //TODO implement here the text that you recover some life when you take a food
+                //you recover 8 HP when you take a food
+                yourHP += 8.0f;
             }
         }
         
@@ -739,7 +956,8 @@ class LabyrinthSurvival : public BaseProject {
                 std::cout << "the boss hurts you\n";
                 const float fireChargingPenality = 0.75f;//a penality to wait some time to fire if the boss hurts you
                 fireCharging = fireChargingPenality;
-                //TODO implement here that you take damage and you lose some of you life
+                //you take damage and you lose 5 HP
+                yourHP -= 5.0f;
             }
             youNeedToWalkAwayFromTheBoss = true;
             float walkAwayXIncr = WALK_AWAY_SPEED * cos(dirBossYou);
@@ -757,7 +975,8 @@ class LabyrinthSurvival : public BaseProject {
                     const float tiltTimePenality = 0.25f;//morover another penality is that you are tilt and you can't move for a while
                     tiltTimeCounter = tiltTimePenality;
                     std::cout << "you are slammed against the wall and you take extra damages\n";
-                    //TODO implement here you take extra damages
+                    //you take extra damages and you lose other 5 HP
+                    yourHP -= 5.0f;
                 }
             }
             if(distBossYou >= maxDistFromTheBoss){
@@ -849,16 +1068,19 @@ class LabyrinthSurvival : public BaseProject {
 		if(glfwGetKey(window, GLFW_KEY_ESCAPE)) {
 			glfwSetWindowShouldClose(window, GL_TRUE);
 		}
-
-		glm::mat4 M = glm::perspective(glm::radians(45.0f), Ar, 0.1f, 50.0f);
+        
+        // perspective
+		glm::mat4 M = glm::perspective(glm::radians(45.0f), Ar, 0.01f, 50.0f);//the vertical field of view, the aspect ratio, the near and the far plane distances.
 		M[1][1] *= -1;
-
+        
+        //view transform
 		glm::mat4 Mv =  glm::rotate(glm::mat4(1.0), -CamBeta, glm::vec3(1,0,0)) *
 						glm::rotate(glm::mat4(1.0), -CamAlpha, glm::vec3(0,1,0)) *
 						glm::translate(glm::mat4(1.0), -CamPos);
 
 		glm::mat4 ViewPrj =  M * Mv;
 		UniformBufferObject ubo{};
+        UniformBufferObjectUI uboUI{};
 		glm::mat4 baseTr = glm::mat4(1.0f);
 								
 		// Here is where you actually update your uniforms
@@ -876,6 +1098,52 @@ class LabyrinthSurvival : public BaseProject {
         DS.map(currentImage, &ubo, sizeof(ubo), 0);
         DS.map(currentImage, &gubo, sizeof(gubo), 1);
         
+        //locate the UI in the scene...
+        
+        //start HP bar
+        if(yourHP <= 0.0f){
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIXPosition, 1.0f, 1.0f);//in case you don't have any HP, the bar is non shown
+        } else {
+            uboUI.mMat = ObtainWorldMatrixForUI(0.0f, 0.0f, 1.0f, 1.0f);//normal position for start HP bar
+        }
+        uboUI.mvpMat = ViewPrj * uboUI.mMat;
+        uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
+        DSStartBarYourHP.map(currentImage, &uboUI, sizeof(uboUI), 0);
+        
+        //end HP bar
+        if(yourHP <= 0.0f){
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIXPosition, 1.0f, 1.0f);//in case you don't have any HP, the bar is non shown
+        } else {
+            uboUI.mMat = ObtainWorldMatrixForUI(dimHPBar * yourHP, 0.0f, 1.0f, 1.0f);//normal position for end HP bar
+        }
+        uboUI.mvpMat = ViewPrj * uboUI.mMat;
+        uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
+        DSEndBarYourHP.map(currentImage, &uboUI, sizeof(uboUI), 0);
+        
+        //mid HP bar
+        if(yourHP <= 0.0f){
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIXPosition, 1.0f, 1.0f);//in case you don't have any HP, the bar is non shown
+        } else {
+            //normal position for mid HP bar
+            float dimMidBarYourHPMultiplier = yourHP - 1.0f;//enlarge the mid bar based on your HP according to this factor
+            if(dimMidBarYourHPMultiplier < 0.0f){
+                dimMidBarYourHPMultiplier = 0.0f;
+            }
+            uboUI.mMat = ObtainWorldMatrixForUI(-startHPBarX * (dimMidBarYourHPMultiplier - 1.0f) + dimHPBar, 0.0f, dimMidBarYourHPMultiplier, 1.0f);//enlarge the mid bar based on your HP and adjust it's location
+        }
+        uboUI.mvpMat = ViewPrj * uboUI.mMat;
+        uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
+        DSMidBarYourHP.map(currentImage, &uboUI, sizeof(uboUI), 0);
+        
+        //your HP written
+        uboUI.mMat = ObtainWorldMatrixForUI(0.0f, 0.0f, 1.0f, 1.0f);
+        uboUI.mvpMat = ViewPrj * uboUI.mMat;
+        uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
+        DSyourHPwritten.map(currentImage, &uboUI, sizeof(uboUI), 0);
+        
+        //locate models in the scene...
+        
+        //labyrinth
         for(int i = 0; i < MK.size(); i++){
             ubo.mMat = MakeWorldMatrix(keyPos[i], KeyRot, KeyScale) * baseTr;//translate the key to locate
             ubo.mvpMat = ViewPrj * ubo.mMat;
@@ -884,6 +1152,7 @@ class LabyrinthSurvival : public BaseProject {
             DSK[i].map(currentImage, &gubo, sizeof(gubo), 1);
         }
         
+        //food
         for(int i = 0; i < MF.size(); i++){
             ubo.mMat = MakeWorldMatrix(foodPos[i], FoodRot, FoodScale) * baseTr;//translate the key to locate
             ubo.mvpMat = ViewPrj * ubo.mMat;
@@ -891,7 +1160,8 @@ class LabyrinthSurvival : public BaseProject {
             DSF[i].map(currentImage, &ubo, sizeof(ubo), 0);
             DSF[i].map(currentImage, &gubo, sizeof(gubo), 1);
         }
-
+        
+        //Walls
         for (int i = 0; i < MW.size(); i++) {
             ubo.mMat = MakeWorldMatrix(wallPos[i], wallRots[i], wallScale) * baseTr;//translate and rotate the walls to locate
             ubo.mvpMat = ViewPrj * ubo.mMat;
@@ -900,6 +1170,7 @@ class LabyrinthSurvival : public BaseProject {
             DSW[i].map(currentImage, &gubo, sizeof(gubo), 1);
         }
         
+        //Door
         ubo.mMat = MakeWorldMatrix(doorPos, doorRot, doorScale) * baseTr;//translate and rotate the door to locate
         ubo.mvpMat = ViewPrj * ubo.mMat;
         ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
@@ -915,6 +1186,7 @@ class LabyrinthSurvival : public BaseProject {
         DSB.map(currentImage, &ubo, sizeof(ubo), 0);
         DSB.map(currentImage, &gubo, sizeof(gubo), 1);
         
+        //ground
         for (int i = 0; i < MG.size(); i++) {
             ubo.mMat = MakeWorldMatrix(groundPos[i], groundRot, groundScale) * baseTr;//translate the ground to locate
             ubo.mvpMat = ViewPrj * ubo.mMat;
@@ -922,6 +1194,7 @@ class LabyrinthSurvival : public BaseProject {
             DSG[i].map(currentImage, &ubo, sizeof(ubo), 0);
             DSG[i].map(currentImage, &gubo, sizeof(gubo), 1);
         }
+        
     }
 	
 	char **genMaze(int nr, int nc) {

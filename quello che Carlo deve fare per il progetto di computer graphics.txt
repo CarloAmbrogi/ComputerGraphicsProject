@@ -1,5 +1,3 @@
-Rinominare i file dello shader
 Il soffitto
-Il diffuse model
-ricontrollare dai pdf che cosa vuole il prof
 Il contatore dei cuori e anche quello dei pv del boss
+Finire di sistemare la UI
