@@ -1617,7 +1617,7 @@ class LabyrinthSurvival : public BaseProject {
             out[nr-1][j] = 'W';
         }
         // Dig the labyrinth
-        const int maxIteration = 1;
+        const int maxIteration = 2;
         bool firstIteration = true;
         for(int count = 0; count < maxIteration; count++){//dig roads for some iterations
             for(int i = 0; i < nr; i++){//iterations on the row roads
