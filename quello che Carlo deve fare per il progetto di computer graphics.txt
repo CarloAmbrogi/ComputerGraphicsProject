@@ -1,3 +1,4 @@
 Il soffitto
 Il contatore dei cuori e anche quello dei pv del boss
 Finire di sistemare la UI
+Togliere la libreria della scritta del prof

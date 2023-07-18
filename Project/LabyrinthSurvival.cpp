@@ -60,15 +60,31 @@ class LabyrinthSurvival : public BaseProject {
     DescriptorSet DSStartBarYourHP;//DescriptorSet DSStartBarYourHP for the bar of your HP (start)
     DescriptorSet DSEndBarYourHP;//DescriptorSet DSEndBarYourHP for the bar of your HP (end)
     DescriptorSet DSMidBarYourHP;//DescriptorSet DSMidBarYourHP for the bar of your HP (mid)
+    DescriptorSet DSStartBarBossHP;//DescriptorSet DSStartBarYourHP for the bar of boss HP (start)
+    DescriptorSet DSEndBarBossHP;//DescriptorSet DSEndBarYourHP for the bar of boss HP (end)
+    DescriptorSet DSMidBarBossHP;//DescriptorSet DSMidBarBossHP for the bar of boss HP (mid)
     DescriptorSet DSyourHPwritten;//DescriptorSet DSyourHPwritten for the written about your HP
+    DescriptorSet DSbossHPwritten;//DescriptorSet DSbossHPwritten for the written about boss HP
+    DescriptorSet DSfindAllTheKeys;//DescriptorSet DSfindAllTheKeys for the written that you have to find all the keys
+    DescriptorSet DSnowGoToTheBoss;//DescriptorSet DSnowGoToTheBoss for the written that you have to go to the boss
     Texture TL, TW, TD, TB, TG, TK, TF;//Texture for the labyrinth, for the wall, the door, the boss, the ground, for the keys, for the food, for your HP bar
-    Texture TStartBarYourHP, TEndBarYourHP, TMidBarYourHP, TyourHPwritten;//Texture for your HP bar (start, end and mid) and for the written about your HP
+    Texture TStartBarYourHP, TEndBarYourHP, TMidBarYourHP, TStartBarBossHP, TEndBarBossHP, TMidBarBossHP, TyourHPwritten, TbossHPwritten, TfindAllTheKeys, TKeyToTake, TKeyTook, TnowGoToTheBoss;//Texture for your HP bar (start, end and mid), for boss HP bar (start, end and mid), for the written about your HP, for the written about boss HP, for the written that you have to find all the keys, for the keys you have to take icon, for the keys you have took icon, for the written that you have to go to the boss
     std::vector<Model> MK;//model MK for the keys
     std::vector<Model> MF;//model MF for the food
     Model MStartBarYourHP{};//Model MStartBarYourHP for the bar of your HP (start)
-    Model MEndBarYourHP{};//Model MStartBarYourHP for the bar of your HP (end)
-    Model MMidBarYourHP{};//Model MStartBarYourHP for the bar of your HP (mid)
+    Model MEndBarYourHP{};//Model MEndBarYourHP for the bar of your HP (end)
+    Model MMidBarYourHP{};//Model MMidBarYourHP for the bar of your HP (mid)
     Model MyourHPwritten{};//Model MyourHPwritten for the written about your HP
+    Model MStartBarBossHP{};//Model MStartBarBossHP for the bar of boss HP (start)
+    Model MEndBarBossHP{};//Model MEndBarBossHP for the bar of boss HP (end)
+    Model MMidBarBossHP{};//Model MMidBarBossHP for the bar of boss HP (mid)
+    Model MbossHPwritten{};//Model MbossHPwritten for the written about boss HP
+    Model MfindAllTheKeys{};//Model MfindAllTheKeys for the written that you have to find all the keys
+    std::vector<Model> MKeyToTake;//model MKeyToTake for the keys you have to take icon
+    std::vector<Model> MKeyTook;//model MKeyTook for the keys you have took icon
+    std::vector<DescriptorSet> DSKeyToTake;//DescriptorSet DSKeyToTake for the keys you have to take icon
+    std::vector<DescriptorSet> DSKeyTook;//DescriptorSet DSKeyTook for the keys you have took icon
+    Model MnowGoToTheBoss{};//Model MnowGoToTheBoss for the written that you have to go to the boss
     std::vector<DescriptorSet> DSK;//DescriptorSet DSK for the keys
     std::vector<DescriptorSet> DSF;//DescriptorSet DSF for the food
     std::vector<Model> MW;//model MW for the walls
@@ -106,6 +122,7 @@ class LabyrinthSurvival : public BaseProject {
     
     // Others variables useful when playing
     float yourHP = 40.0f;//at the beginning you have 40 HP
+    float bossHP = 0.0f;//at the beginning there isn't the boss (0 HP) because he has to appire when you arrive to the boss room
     bool youLose = false;//if you lose all HP you lose
     
     // parameters to place elements in the UI
@@ -113,9 +130,17 @@ class LabyrinthSurvival : public BaseProject {
     const float startHPBarY = -1.0f;
     const float dimHPBar = 0.025f;
     const float startyourHPwrittenY = -1.0125f;
-    const float yourHPwrittenOffsetFromBar = 0.15f;
-    const float dimYourHPwrittenX = 0.14f;
-    const float dimYourHPwrittenY = 0.05f;
+    const float HPwrittenOffsetFromBar = 0.15f;
+    const float dimHPwrittenX = 0.14f;
+    const float dimHPwrittenY = 0.05f;
+    const float startFindAllTheKeysWrittenY = -0.95f;
+    const float dimFindAllTheKeysWrittenX = 0.35f;
+    const float dimFindAllTheKeysWrittenY = 0.05f;
+    const float dimIconKeyX = 0.10f;
+    const float dimIconKeyY = 0.05f;
+    const float spaceXBetweenIconsKey = 0.05f;
+    const float dimNowGoToTheBossWrittenX = 0.40f;
+    const float dimNowGoToTheBossWrittenY = 0.05f;
     
     //variables for the boss pattern (the boss has a pattern that sometimes approaches you and sometimes goes away from you)
     const float timeBossApproachYou = 4.5f;//how much time the boss approaches you
@@ -363,11 +388,41 @@ class LabyrinthSurvival : public BaseProject {
         MMidBarYourHP.BP = this;
         addUiElement(&MMidBarYourHP, startHPBarX, startHPBarY, dimHPBar, dimHPBar);
         MyourHPwritten.BP = this;
-        addUiElement(&MyourHPwritten, startHPBarX-yourHPwrittenOffsetFromBar, startyourHPwrittenY, dimYourHPwrittenX, dimYourHPwrittenY);
+        addUiElement(&MyourHPwritten, startHPBarX-HPwrittenOffsetFromBar, startyourHPwrittenY, dimHPwrittenX, dimHPwrittenY);
+        
+        MStartBarBossHP.BP = this;
+        addUiElement(&MStartBarBossHP, startHPBarX, startFindAllTheKeysWrittenY, dimHPBar, dimHPBar);
+        MEndBarBossHP.BP = this;
+        addUiElement(&MEndBarBossHP, startHPBarX, startFindAllTheKeysWrittenY, dimHPBar, dimHPBar);
+        MMidBarBossHP.BP = this;
+        addUiElement(&MMidBarBossHP, startHPBarX, startFindAllTheKeysWrittenY, dimHPBar, dimHPBar);
+        MbossHPwritten.BP = this;
+        addUiElement(&MbossHPwritten, startHPBarX-HPwrittenOffsetFromBar, startFindAllTheKeysWrittenY, dimHPwrittenX, dimHPwrittenY);
+        
+        //Model for the written that you have to take all the keys
+        MfindAllTheKeys.BP = this;
+        addUiElement(&MfindAllTheKeys, startHPBarX-HPwrittenOffsetFromBar, startFindAllTheKeysWrittenY, dimFindAllTheKeysWrittenX, dimFindAllTheKeysWrittenY);
+        
+        //Models for the keys icon
+        for(int i = 0; i < effectiveNumberOfKeys; i++){
+            float offsetXThisIcon = i * (dimIconKeyX + spaceXBetweenIconsKey);
+            Model keyToTakeIcon;
+            keyToTakeIcon.BP = this;
+            addUiElement(&keyToTakeIcon, startHPBarX-HPwrittenOffsetFromBar+offsetXThisIcon, startFindAllTheKeysWrittenY, dimIconKeyX, dimIconKeyY);//model key to take icon
+            MKeyToTake.push_back(keyToTakeIcon);
+            Model keyTookIcon;
+            keyTookIcon.BP = this;
+            addUiElement(&keyTookIcon, startHPBarX-HPwrittenOffsetFromBar+offsetXThisIcon, startFindAllTheKeysWrittenY, dimIconKeyX, dimIconKeyY);//model key took icon
+            MKeyTook.push_back(keyTookIcon);
+        }
+        
+        //Model for the written that now you have to go to the boss
+        MnowGoToTheBoss.BP = this;
+        addUiElement(&MnowGoToTheBoss, startHPBarX-HPwrittenOffsetFromBar, startFindAllTheKeysWrittenY, dimNowGoToTheBossWrittenX, dimNowGoToTheBossWrittenY);
         
         //initialize textures
-        TL.init(this, "textures/IMG_9647.png");
-        TW.init(this, "textures/LowPolyDungeonsLite_Texture_01.png");
+        TL.init(this, "textures/wall.png");
+        TW.init(this, "textures/ModelWallTexture.png");
         TD.init(this, "textures/door.png");
         TB.init(this, "textures/bossTry2.png");
         TG.init(this, "textures/ground.png");
@@ -377,6 +432,14 @@ class LabyrinthSurvival : public BaseProject {
         TEndBarYourHP.init(this, "textures/EndBarYourHP.png");
         TMidBarYourHP.init(this, "textures/MidBarYourHP.png");
         TyourHPwritten.init(this, "textures/yourHPwritten.png");
+        TStartBarBossHP.init(this, "textures/StartBarBossHP.png");
+        TEndBarBossHP.init(this, "textures/EndBarBossHP.png");
+        TMidBarBossHP.init(this, "textures/MidBarBossHP.png");
+        TbossHPwritten.init(this, "textures/bossHPwritten.png");
+        TfindAllTheKeys.init(this, "textures/findAllTheKeys.png");
+        TKeyToTake.init(this, "textures/keyToTake.png");
+        TKeyTook.init(this, "textures/keyTook.png");
+        TnowGoToTheBoss.init(this, "textures/nowGoToTheBoss.png");
 
 		M.createVertexBuffer();
 		M.createIndexBuffer();
@@ -393,6 +456,31 @@ class LabyrinthSurvival : public BaseProject {
         
         MyourHPwritten.createVertexBuffer();
         MyourHPwritten.createIndexBuffer();
+        
+        MStartBarBossHP.createVertexBuffer();
+        MStartBarBossHP.createIndexBuffer();
+        
+        MEndBarBossHP.createVertexBuffer();
+        MEndBarBossHP.createIndexBuffer();
+        
+        MMidBarBossHP.createVertexBuffer();
+        MMidBarBossHP.createIndexBuffer();
+        
+        MbossHPwritten.createVertexBuffer();
+        MbossHPwritten.createIndexBuffer();
+        
+        MfindAllTheKeys.createVertexBuffer();
+        MfindAllTheKeys.createIndexBuffer();
+        
+        for(int i = 0; i < effectiveNumberOfKeys; i++){
+            MKeyToTake[i].createVertexBuffer();
+            MKeyToTake[i].createIndexBuffer();
+            MKeyTook[i].createVertexBuffer();
+            MKeyTook[i].createIndexBuffer();
+        }
+        
+        MnowGoToTheBoss.createVertexBuffer();
+        MnowGoToTheBoss.createIndexBuffer();
 
 		destroyMaze(r, c, maze);
         
@@ -429,6 +517,53 @@ class LabyrinthSurvival : public BaseProject {
         DSyourHPwritten.init(this, &DSLUI, {
                     {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
                     {1, TEXTURE, 0, &TyourHPwritten}
+                });
+        
+        DSStartBarBossHP.init(this, &DSLUI, {
+                    {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
+                    {1, TEXTURE, 0, &TStartBarBossHP}
+                });
+        
+        DSEndBarBossHP.init(this, &DSLUI, {
+                    {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
+                    {1, TEXTURE, 0, &TEndBarBossHP}
+                });
+        
+        DSMidBarBossHP.init(this, &DSLUI, {
+                    {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
+                    {1, TEXTURE, 0, &TMidBarBossHP}
+                });
+        
+        DSbossHPwritten.init(this, &DSLUI, {
+                    {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
+                    {1, TEXTURE, 0, &TbossHPwritten}
+                });
+        
+        DSfindAllTheKeys.init(this, &DSLUI, {
+                    {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
+                    {1, TEXTURE, 0, &TfindAllTheKeys}
+                });
+        
+        for(int i = 0; i < effectiveNumberOfKeys; i++){
+            DescriptorSet additiveDS;
+            additiveDS.init(this, &DSLUI, {
+                        {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
+                        {1, TEXTURE, 0, &TKeyToTake}
+                    });
+            DSKeyToTake.push_back(additiveDS);
+        }
+        for(int i = 0; i < effectiveNumberOfKeys; i++){
+            DescriptorSet additiveDS;
+            additiveDS.init(this, &DSLUI, {
+                        {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
+                        {1, TEXTURE, 0, &TKeyTook}
+                    });
+            DSKeyTook.push_back(additiveDS);
+        }
+        
+        DSnowGoToTheBoss.init(this, &DSLUI, {
+                    {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
+                    {1, TEXTURE, 0, &TnowGoToTheBoss}
                 });
         
         for(int i = 0; i < effectiveNumberOfKeys; i++){
@@ -496,6 +631,18 @@ class LabyrinthSurvival : public BaseProject {
         DSEndBarYourHP.cleanup();
         DSMidBarYourHP.cleanup();
         DSyourHPwritten.cleanup();
+        DSStartBarBossHP.cleanup();
+        DSEndBarBossHP.cleanup();
+        DSMidBarBossHP.cleanup();
+        DSbossHPwritten.cleanup();
+        DSfindAllTheKeys.cleanup();
+        for(DescriptorSet ds : DSKeyToTake){
+            ds.cleanup();
+        }
+        for(DescriptorSet ds : DSKeyTook){
+            ds.cleanup();
+        }
+        DSnowGoToTheBoss.cleanup();
         for(DescriptorSet ds : DSK){
             ds.cleanup();
         }
@@ -528,6 +675,14 @@ class LabyrinthSurvival : public BaseProject {
         TEndBarYourHP.cleanup();
         TMidBarYourHP.cleanup();
         TyourHPwritten.cleanup();
+        TStartBarBossHP.cleanup();
+        TEndBarBossHP.cleanup();
+        TMidBarBossHP.cleanup();
+        TbossHPwritten.cleanup();
+        TfindAllTheKeys.cleanup();
+        TKeyToTake.cleanup();
+        TKeyTook.cleanup();
+        TnowGoToTheBoss.cleanup();
         
 		M.cleanup();
         
@@ -535,6 +690,18 @@ class LabyrinthSurvival : public BaseProject {
         MEndBarYourHP.cleanup();
         MMidBarYourHP.cleanup();
         MyourHPwritten.cleanup();
+        MStartBarBossHP.cleanup();
+        MEndBarBossHP.cleanup();
+        MMidBarBossHP.cleanup();
+        MbossHPwritten.cleanup();
+        MfindAllTheKeys.cleanup();
+        for (Model keyToTake : MKeyToTake){
+            keyToTake.cleanup();
+        }
+        for (Model keyTook : MKeyTook){
+            keyTook.cleanup();
+        }
+        MnowGoToTheBoss.cleanup();
         
         for (Model key : MK){
             key.cleanup();
@@ -596,6 +763,25 @@ class LabyrinthSurvival : public BaseProject {
         
         vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MyourHPwritten.indices.size()), 1, 0, 0, 0);
         
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MStartBarBossHP.indices.size()), 1, 0, 0, 0);
+        
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MEndBarBossHP.indices.size()), 1, 0, 0, 0);
+        
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MMidBarBossHP.indices.size()), 1, 0, 0, 0);
+        
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MbossHPwritten.indices.size()), 1, 0, 0, 0);
+        
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MfindAllTheKeys.indices.size()), 1, 0, 0, 0);
+        
+        for (int i = 0; i < MKeyToTake.size(); i++) {
+            vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MKeyToTake[i].indices.size()), 1, 0, 0, 0);
+        }
+        for (int i = 0; i < MKeyTook.size(); i++) {
+            vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MKeyTook[i].indices.size()), 1, 0, 0, 0);
+        }
+        
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MnowGoToTheBoss.indices.size()), 1, 0, 0, 0);
+        
         for (int i = 0; i < MW.size(); i++) {
             MW[i].bind(commandBuffer);
             DSW[i].bind(commandBuffer, P1, currentImage);
@@ -637,6 +823,49 @@ class LabyrinthSurvival : public BaseProject {
         DSyourHPwritten.bind(commandBuffer, PUI, currentImage);
         vkCmdDrawIndexed(commandBuffer,
                 static_cast<uint32_t>(MyourHPwritten.indices.size()), 1, 0, 0, 0);
+        
+        MStartBarBossHP.bind(commandBuffer);
+        DSStartBarBossHP.bind(commandBuffer, PUI, currentImage);
+        vkCmdDrawIndexed(commandBuffer,
+                static_cast<uint32_t>(MStartBarBossHP.indices.size()), 1, 0, 0, 0);
+        
+        MEndBarBossHP.bind(commandBuffer);
+        DSEndBarBossHP.bind(commandBuffer, PUI, currentImage);
+        vkCmdDrawIndexed(commandBuffer,
+                static_cast<uint32_t>(MEndBarBossHP.indices.size()), 1, 0, 0, 0);
+        
+        MMidBarBossHP.bind(commandBuffer);
+        DSMidBarBossHP.bind(commandBuffer, PUI, currentImage);
+        vkCmdDrawIndexed(commandBuffer,
+                static_cast<uint32_t>(MMidBarBossHP.indices.size()), 1, 0, 0, 0);
+        
+        MbossHPwritten.bind(commandBuffer);
+        DSbossHPwritten.bind(commandBuffer, PUI, currentImage);
+        vkCmdDrawIndexed(commandBuffer,
+                static_cast<uint32_t>(MbossHPwritten.indices.size()), 1, 0, 0, 0);
+        
+        MfindAllTheKeys.bind(commandBuffer);
+        DSfindAllTheKeys.bind(commandBuffer, PUI, currentImage);
+        vkCmdDrawIndexed(commandBuffer,
+                static_cast<uint32_t>(MfindAllTheKeys.indices.size()), 1, 0, 0, 0);
+        
+        for (int i = 0; i < MKeyToTake.size(); i++) {
+            MKeyToTake[i].bind(commandBuffer);
+            DSKeyToTake[i].bind(commandBuffer, PUI, currentImage);
+            vkCmdDrawIndexed(commandBuffer,
+                    static_cast<uint32_t>(MKeyToTake[i].indices.size()), 1, 0, 0, 0);
+        }
+        for (int i = 0; i < MKeyTook.size(); i++) {
+            MKeyTook[i].bind(commandBuffer);
+            DSKeyTook[i].bind(commandBuffer, PUI, currentImage);
+            vkCmdDrawIndexed(commandBuffer,
+                    static_cast<uint32_t>(MKeyTook[i].indices.size()), 1, 0, 0, 0);
+        }
+        
+        MnowGoToTheBoss.bind(commandBuffer);
+        DSnowGoToTheBoss.bind(commandBuffer, PUI, currentImage);
+        vkCmdDrawIndexed(commandBuffer,
+                static_cast<uint32_t>(MnowGoToTheBoss.indices.size()), 1, 0, 0, 0);
 
         txt.populateCommandBuffer(commandBuffer, currentImage, 0);
 	}
@@ -758,8 +987,13 @@ class LabyrinthSurvival : public BaseProject {
         
         //Animation boss appear when the boss fight is started
         const float BOSS_SCALE_SPEED = 3.5f;
+        const float BOSS_START_HP_SPEED = 85.0f;
         if(bossFightStarted){
             bossScale += BOSS_SCALE_SPEED * deltaT;
+            if(!bossFightStartedAnimationFinished){
+                bossHP += BOSS_START_HP_SPEED * deltaT;//during the animation the boss bar HP fill and the boss obtain it's HP
+                //at the end of the animation the boss will have about 55 HP
+            }
         }
         if(bossScale > maxBossScale){
             bossScale = maxBossScale;
@@ -879,7 +1113,6 @@ class LabyrinthSurvival : public BaseProject {
                 std::cout << "You took a key (remaining keys: ";
                 std::cout << howManyRemainingKeys;
                 std::cout << ")\n";
-                //TODO implement here that the text changes when you take a key
             }
         }
         
@@ -900,8 +1133,8 @@ class LabyrinthSurvival : public BaseProject {
                 std::cout << "You took a food\n";
                 tookFood[i] = true;
                 foodPos[i] = notVisiblePosition;
-                //you recover 8 HP when you take a food
-                yourHP += 8.0f;
+                //you recover 6.8f HP when you take a food
+                yourHP += 6.8f;
             }
         }
         
@@ -1038,22 +1271,26 @@ class LabyrinthSurvival : public BaseProject {
                     const float minDistFromTheBossToFire = 3.0f;
                     const float minDistAngleToFireTheBoss = glm::radians(30.0f);
                     if(distBossYou <= minDistFromTheBossToFire){//to fire the boss you need to be near to it
-                        float dirYouBoss = glm::radians(90.0f) - CamAlpha;//the direction you are watching has this relation from CamAlpha; this value (after a moudle 360 degre adjustment) can be compared with dirBossYou to check if you are looking to the boss direction
-                        while(dirYouBoss <= glm::radians(0.0f)){//TODO questo while si può spostare
-                            dirYouBoss += glm::radians(360.0f);
-                        }
-                        while(dirYouBoss > glm::radians(360.0f)){
-                            dirYouBoss -= glm::radians(360.0f);
-                        }
-                        if(abs(dirBossYou - dirYouBoss) < minDistAngleToFireTheBoss || abs(dirBossYou - dirYouBoss) > glm::radians(360.0f) - minDistAngleToFireTheBoss){//to fire the boss you need also to watch it with your camera
-                            float firePowFloat = (pow((minDistFromTheBossToFire - distBossYou),2)*50.0f)+2.0f;//the power of your fire depends by the distance you manage to fire the boss! If you are nearer to the boss you inflict more damages but you are more in danger in the boss hurts you
-                            int firePow = firePowFloat;//num of damages you inflict to the boss
-                            std::cout << "You have fired!!! (pow: ";
-                            std::cout << firePow;
-                            std::cout << ") (you are near to the boss and you are watching the boss with your camera)\n";
-                            //TODO implement here that the boss takes damages
+                        if(CamPos.x > originalDoorPos.x - 0.5f){//in case you fire from the safe area, the hit is not valid
+                            std::cout << "You have fired but you are in the safe area and so the hit is not valid\n";
                         } else {
-                            std::cout << "You have fired but you are not watching the boss with your camera; you are near to the boss\n";
+                            float dirYouBoss = glm::radians(90.0f) - CamAlpha;//the direction you are watching has this relation from CamAlpha; this value (after a moudle 360 degre adjustment) can be compared with dirBossYou to check if you are looking to the boss direction
+                            while(dirYouBoss <= glm::radians(0.0f)){//TODO questo while si può spostare
+                                dirYouBoss += glm::radians(360.0f);
+                            }
+                            while(dirYouBoss > glm::radians(360.0f)){
+                                dirYouBoss -= glm::radians(360.0f);
+                            }
+                            if(abs(dirBossYou - dirYouBoss) < minDistAngleToFireTheBoss || abs(dirBossYou - dirYouBoss) > glm::radians(360.0f) - minDistAngleToFireTheBoss){//to fire the boss you need also to watch it with your camera
+                                float firePow = (pow((minDistFromTheBossToFire - distBossYou),3)*0.57f)+0.13f;//the power of your fire depends by the distance you manage to fire the boss! If you are nearer to the boss you inflict more damages but you are more in danger in the boss hurts you
+                                std::cout << "You have fired!!! (pow: ";
+                                std::cout << firePow;
+                                std::cout << ") (you are near to the boss and you are watching the boss with your camera)\n";
+                                //the boss takes damages
+                                bossHP -= firePow;
+                            } else {
+                                std::cout << "You have fired but you are not watching the boss with your camera; you are near to the boss\n";
+                            }
                         }
                     } else {
                         std::cout << "You have fired but you are too distant from the boss\n";
@@ -1100,9 +1337,9 @@ class LabyrinthSurvival : public BaseProject {
         
         //locate the UI in the scene...
         
-        //start HP bar
+        //start your HP bar
         if(yourHP <= 0.0f){
-            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIXPosition, 1.0f, 1.0f);//in case you don't have any HP, the bar is non shown
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIXPosition, 1.0f, 1.0f);//in case you don't have any HP, the bar is not shown
         } else {
             uboUI.mMat = ObtainWorldMatrixForUI(0.0f, 0.0f, 1.0f, 1.0f);//normal position for start HP bar
         }
@@ -1110,9 +1347,9 @@ class LabyrinthSurvival : public BaseProject {
         uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
         DSStartBarYourHP.map(currentImage, &uboUI, sizeof(uboUI), 0);
         
-        //end HP bar
+        //end your HP bar
         if(yourHP <= 0.0f){
-            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIXPosition, 1.0f, 1.0f);//in case you don't have any HP, the bar is non shown
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIYPosition, 1.0f, 1.0f);//in case you don't have any HP, the bar is not shown
         } else {
             uboUI.mMat = ObtainWorldMatrixForUI(dimHPBar * yourHP, 0.0f, 1.0f, 1.0f);//normal position for end HP bar
         }
@@ -1120,9 +1357,9 @@ class LabyrinthSurvival : public BaseProject {
         uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
         DSEndBarYourHP.map(currentImage, &uboUI, sizeof(uboUI), 0);
         
-        //mid HP bar
+        //mid your HP bar
         if(yourHP <= 0.0f){
-            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIXPosition, 1.0f, 1.0f);//in case you don't have any HP, the bar is non shown
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIYPosition, 1.0f, 1.0f);//in case you don't have any HP, the bar is not shown
         } else {
             //normal position for mid HP bar
             float dimMidBarYourHPMultiplier = yourHP - 1.0f;//enlarge the mid bar based on your HP according to this factor
@@ -1136,10 +1373,119 @@ class LabyrinthSurvival : public BaseProject {
         DSMidBarYourHP.map(currentImage, &uboUI, sizeof(uboUI), 0);
         
         //your HP written
-        uboUI.mMat = ObtainWorldMatrixForUI(0.0f, 0.0f, 1.0f, 1.0f);
+        if(yourHP > 0.0f){
+            uboUI.mMat = ObtainWorldMatrixForUI(0.0f, 0.0f, 1.0f, 1.0f);//show normally your HP bar written
+        } else {
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIYPosition, 1.0f, 1.0f);//in case you don't have any HP, also this written is not shown
+        }
         uboUI.mvpMat = ViewPrj * uboUI.mMat;
         uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
         DSyourHPwritten.map(currentImage, &uboUI, sizeof(uboUI), 0);
+        
+        //start boss HP bar
+        if(bossHP <= 0.0f){
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIXPosition, 1.0f, 1.0f);//in case the boss doesn't have any HP, the bar is not shown
+        } else {
+            uboUI.mMat = ObtainWorldMatrixForUI(0.0f, 0.0f, 1.0f, 1.0f);//normal position for boss start HP bar
+        }
+        uboUI.mvpMat = ViewPrj * uboUI.mMat;
+        uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
+        DSStartBarBossHP.map(currentImage, &uboUI, sizeof(uboUI), 0);
+        
+        //end boss HP bar
+        if(bossHP <= 0.0f){
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIYPosition, 1.0f, 1.0f);//in case the boss doesn't have any HP, the bar is not shown
+        } else {
+            uboUI.mMat = ObtainWorldMatrixForUI(dimHPBar * bossHP, 0.0f, 1.0f, 1.0f);//normal position for boss end HP bar
+        }
+        uboUI.mvpMat = ViewPrj * uboUI.mMat;
+        uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
+        DSEndBarBossHP.map(currentImage, &uboUI, sizeof(uboUI), 0);
+        
+        //mid boss HP bar
+        if(bossHP <= 0.0f){
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIYPosition, 1.0f, 1.0f);//in case the boss doesn't have any HP, the bar is not shown
+        } else {
+            //normal position for boss mid HP bar
+            float dimMidBarBossHPMultiplier = bossHP - 1.0f;//enlarge the mid bar based on boss HP according to this factor
+            if(dimMidBarBossHPMultiplier < 0.0f){
+                dimMidBarBossHPMultiplier = 0.0f;
+            }
+            uboUI.mMat = ObtainWorldMatrixForUI(-startHPBarX * (dimMidBarBossHPMultiplier - 1.0f) + dimHPBar, 0.0f, dimMidBarBossHPMultiplier, 1.0f);//enlarge the mid bar based on boss HP and adjust it's location
+        }
+        uboUI.mvpMat = ViewPrj * uboUI.mMat;
+        uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
+        DSMidBarBossHP.map(currentImage, &uboUI, sizeof(uboUI), 0);
+        
+        //boss HP written
+        if(bossHP > 0.0f){
+            uboUI.mMat = ObtainWorldMatrixForUI(0.0f, 0.0f, 1.0f, 1.0f);//show normally boss HP bar written
+        } else {
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIYPosition, 1.0f, 1.0f);//in case the boss doesn't have any HP, also this written is not shown
+        }
+        uboUI.mvpMat = ViewPrj * uboUI.mMat;
+        uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
+        DSbossHPwritten.map(currentImage, &uboUI, sizeof(uboUI), 0);
+        
+        //check here if you have found at least a key
+        bool youHaveFoundAtLeastAKey = false;
+        for(int i = 0; i < effectiveNumberOfKeys; i++){
+            if(tookKey[i] == true){
+                youHaveFoundAtLeastAKey = true;
+            }
+        }
+        
+        //check here if you have found all the keys
+        bool youHaveFoundAllTheKeys = true;
+        for(int i = 0; i < effectiveNumberOfKeys; i++){
+            if(tookKey[i] == false){
+                youHaveFoundAllTheKeys = false;
+            }
+        }
+        
+        //find all the keys written
+        if(youHaveFoundAtLeastAKey == false){
+            uboUI.mMat = ObtainWorldMatrixForUI(0.0f, 0.0f, 1.0f, 1.0f);//if you have to find all the keys
+        } else {
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIYPosition, 1.0f, 1.0f);//if you have found at least a key this written is not shown
+        }
+        uboUI.mvpMat = ViewPrj * uboUI.mMat;
+        uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
+        DSfindAllTheKeys.map(currentImage, &uboUI, sizeof(uboUI), 0);
+        
+        //keys icon (keys you have to take)
+        for(int i = 0; i < effectiveNumberOfKeys; i++){
+            if(tookKey[i] == false && youHaveFoundAtLeastAKey && !youHaveFoundAllTheKeys){//in case you have to take this key and you have found at least a key and you have not found all the keys
+                uboUI.mMat = ObtainWorldMatrixForUI(0.0f, 0.0f, 1.0f, 1.0f);//show you have to take this key
+            } else {
+                uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIYPosition, 1.0f, 1.0f);//don't show you have to take this key
+            }
+            uboUI.mvpMat = ViewPrj * uboUI.mMat;
+            uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
+            DSKeyToTake[i].map(currentImage, &uboUI, sizeof(uboUI), 0);
+        }
+        
+        //keys icon (keys you have took)
+        for(int i = 0; i < effectiveNumberOfKeys; i++){
+            if(tookKey[i] == true && youHaveFoundAtLeastAKey && !youHaveFoundAllTheKeys){//in case you have took this key and you have found at least a key and you have not found all the keys
+                uboUI.mMat = ObtainWorldMatrixForUI(0.0f, 0.0f, 1.0f, 1.0f);//show you have took this key
+            } else {
+                uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIYPosition, 1.0f, 1.0f);//don't show you have took this key
+            }
+            uboUI.mvpMat = ViewPrj * uboUI.mMat;
+            uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
+            DSKeyTook[i].map(currentImage, &uboUI, sizeof(uboUI), 0);
+        }
+        
+        //now go to the boss written
+        if(youHaveFoundAllTheKeys == true && !bossFightStarted){
+            uboUI.mMat = ObtainWorldMatrixForUI(0.0f, 0.0f, 1.0f, 1.0f);//if you have found all the keys and you aren't to the boss fight
+        } else {
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIYPosition, 1.0f, 1.0f);//else this written is not shown
+        }
+        uboUI.mvpMat = ViewPrj * uboUI.mMat;
+        uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
+        DSnowGoToTheBoss.map(currentImage, &uboUI, sizeof(uboUI), 0);
         
         //locate models in the scene...
         
