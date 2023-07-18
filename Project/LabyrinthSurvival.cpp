@@ -18,7 +18,7 @@ std::vector<SingleText> textToVisualize = {
 // num rows and cols labyrinth
 #define NUMROW 45
 #define NUMCOL 45
-#define MAX_LIGHTS 50
+#define MAX_LIGHTS 150
 
 // The uniform buffer object used in this example
 struct UniformBufferObject {
@@ -1292,7 +1292,7 @@ class LabyrinthSurvival : public BaseProject {
 		}
         
         // perspective
-		glm::mat4 M = glm::perspective(glm::radians(45.0f), Ar, 0.01f, 50.0f);//the vertical field of view, the aspect ratio, the near and the far plane distances.
+		glm::mat4 M = glm::perspective(glm::radians(45.0f), Ar, 0.01f, 45.0f);//the vertical field of view, the aspect ratio, the near and the far plane distances.
 		M[1][1] *= -1;
         
         //view transform
@@ -1304,13 +1304,18 @@ class LabyrinthSurvival : public BaseProject {
 		UniformBufferObject ubo{};
         UniformBufferObjectUI uboUI{};
 		glm::mat4 baseTr = glm::mat4(1.0f);
-
+        
+        //add a light in your position (first light)
+        GlobalUniformBufferObject gubo{};
+        gubo.lightPos[0] = glm::vec4(CamPos, 1.0f);
+        //add a light in boss position (second light)
+        gubo.lightPos[1] = glm::vec4(bossPos, 1.0f);
+        
 		// Here is where you actually update your uniforms
 
 		// updates global uniforms
-		GlobalUniformBufferObject gubo{};
-        for (int i = 0; i < MAX_LIGHTS; i++) {
-            gubo.lightPos[i] = glm::vec4(lightFirePositions[i], 1.0f);
+        for (int i = 2; i < MAX_LIGHTS; i++) {
+            gubo.lightPos[i] = glm::vec4(lightFirePositions[i-1], 1.0f);
         }
 		gubo.lightColor = glm::vec4(1.0f, 0.27f, 0.0f, 1.0f);
 		gubo.eyePos = CamPos;
@@ -1617,7 +1622,7 @@ class LabyrinthSurvival : public BaseProject {
             out[nr-1][j] = 'W';
         }
         // Dig the labyrinth
-        const int maxIteration = 2;
+        const int maxIteration = 4;
         bool firstIteration = true;
         for(int count = 0; count < maxIteration; count++){//dig roads for some iterations
             for(int i = 0; i < nr; i++){//iterations on the row roads
@@ -1890,18 +1895,23 @@ class LabyrinthSurvival : public BaseProject {
         }
         labyrinthShapeInitialized = true;
         // Add the models of the walls
+        const int lightFrequence = 7;//fequence to place a light
+        const int lightFrequenceBoss = 2;//fequence to place a light in the room of the boss
+        int checkInsertLight1 = 0;
+        int checkInsertLight2 = 0;
         //| walls
-        for(int i = 0; i < nr; i++){
-            for(int j = 1; j < nc; j++){
+        for(int j = 1; j < nc; j++){
+            for(int i = 0; i < nr; i++){
                 if(out[i][j-1] == '#' && out[i][j] != '#'){
                     effectiveNumberOfWalls++;
+                    checkInsertLight1++;
                     glm::vec3 pos = glm::vec3(j, 0, i+0.5);
                     wallPos.push_back(pos);
                     glm::quat rot = glm::quat(glm::vec3(0, glm::radians(90.0f), 0)) *
                                         glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                                         glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
                     wallRots.push_back(rot);
-                    if (effectiveNumberOfWalls % 10 == 0 && effectiveNumberOfLights <= MAX_LIGHTS) {
+                    if ((checkInsertLight1 % lightFrequence == 0 || out[i+1][j] == '#' && out[i-1][j] == '#' || out[i][j] == 'B' && checkInsertLight1 % lightFrequenceBoss == 0) && effectiveNumberOfLights < MAX_LIGHTS - 2) {
                         effectiveNumberOfLights++;
                         glm::vec3 lightSinglePos = glm::vec3(j+0.025, 0.5, i+0.5);
                         glm::vec3 lightFirePos = glm::vec3(j+0.125, 0.6, i+0.5);
@@ -1912,13 +1922,14 @@ class LabyrinthSurvival : public BaseProject {
                 }
                 if(out[i][j-1] != '#' && out[i][j] == '#'){
                     effectiveNumberOfWalls++;
+                    checkInsertLight2++;
                     glm::vec3 pos = glm::vec3(j, 0, i+0.5);
                     wallPos.push_back(pos);
                     glm::quat rot = glm::quat(glm::vec3(0, glm::radians(-90.0f), 0)) *
                                         glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                                         glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
                     wallRots.push_back(rot);
-                    if (effectiveNumberOfWalls % 10 == 0 && effectiveNumberOfLights <= MAX_LIGHTS) {
+                    if ((checkInsertLight2 % lightFrequence == 0 || out[i+1][j-1] == '#' && out[i-1][j-1] == '#' || out[i][j-1] == 'B' && checkInsertLight2 % lightFrequenceBoss == 0) && effectiveNumberOfLights < MAX_LIGHTS - 2) {
                         effectiveNumberOfLights++;
                         glm::vec3 lightSinglePos = glm::vec3(j-0.025, 0.5, i+0.5);
                         glm::vec3 lightFirePos = glm::vec3(j-0.125, 0.6, i+0.5);
@@ -1934,13 +1945,14 @@ class LabyrinthSurvival : public BaseProject {
             for(int j = 0; j < nc; j++){
                 if(out[i-1][j] == '#' && out[i][j] != '#'){
                     effectiveNumberOfWalls++;
+                    checkInsertLight1++;
                     glm::vec3 pos = glm::vec3(j+0.5, 0, i);
                     wallPos.push_back(pos);
                     glm::quat rot = glm::quat(glm::vec3(0, glm::radians(0.0f), 0)) *
                                         glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                                         glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
                     wallRots.push_back(rot);
-                    if (effectiveNumberOfWalls % 10 == 0 && effectiveNumberOfLights <= MAX_LIGHTS) {
+                    if ((checkInsertLight1 % lightFrequence == 0 || out[i][j+1] == '#' && out[i][j-1] == '#' || out[i][j] == 'B' && effectiveNumberOfWalls % lightFrequenceBoss == 0) && checkInsertLight1 < MAX_LIGHTS - 2) {
                         effectiveNumberOfLights++;
                         glm::vec3 lightSinglePos = glm::vec3(j+0.5, 0.5, i+0.025);
                         glm::vec3 lightFirePos = glm::vec3(j+0.5, 0.6, i+0.125);
@@ -1951,13 +1963,14 @@ class LabyrinthSurvival : public BaseProject {
                 }
                 if(out[i-1][j] != '#' && out[i][j] == '#'){
                     effectiveNumberOfWalls++;
+                    checkInsertLight2++;
                     glm::vec3 pos = glm::vec3(j+0.5, 0, i);
                     wallPos.push_back(pos);
                     glm::quat rot = glm::quat(glm::vec3(0, glm::radians(180.0f), 0)) *
                                         glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                                         glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
                     wallRots.push_back(rot);
-                    if (effectiveNumberOfWalls % 10 == 0 && effectiveNumberOfLights <= MAX_LIGHTS) {
+                    if ((checkInsertLight2 % lightFrequence == 0 || out[i-1][j+1] == '#' && out[i-1][j-1] == '#' || out[i-1][j] == 'B' && checkInsertLight2 % lightFrequenceBoss == 0) && effectiveNumberOfLights < MAX_LIGHTS - 2) {
                         effectiveNumberOfLights++;
                         glm::vec3 lightSinglePos =  glm::vec3(j+0.5, 0.5, i-0.025);
                         glm::vec3 lightFirePos = glm::vec3(j+0.5, 0.6, i-0.125);

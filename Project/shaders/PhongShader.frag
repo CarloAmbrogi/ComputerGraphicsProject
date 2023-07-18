@@ -1,7 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-#define MAX_LIGHTS 50
+#define MAX_LIGHTS 150
 
 layout(binding = 1) uniform GlobalUniformBufferObject {
     vec4[MAX_LIGHTS] lightPos;
