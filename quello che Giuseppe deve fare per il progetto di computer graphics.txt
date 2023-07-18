@@ -1,3 +1,4 @@
 Le luci non illuminano bene i modelli dei muri
 Più luci in giro per il labirinto
-La scritta che cambia
+The parameters of the material, such as diffuse and specular colors, emission, roughness, metalness, could be either constant or read from textures. Vedi l'assignment A12 come esempio per passare questi parametri; puoi usare delle texture per ricevere questi parametri. Puoi dunque comporre il BRDF
+Refactor
