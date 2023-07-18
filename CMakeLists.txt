@@ -27,6 +27,14 @@ project(${PROJ_NAME} LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 add_executable(${PROJECT_NAME} ${MAIN})
 find_package(Vulkan REQUIRED)
+
+set(COMPILE_SHADER "${VULKAN_SDK}/Bin/glslc.exe")
+set(VERT_ARGS "shaders/PhongShader.vert -o shaders/PhongVert.spv")
+set(FRAG_ARGS "shaders/PhongShader.frag -o shaders/PhongFrag.spv")
+execute_process(COMMAND ${COMPILE_SHADER} ${VERT_ARGS})
+execute_process(COMMAND ${VULKAN_SDK} ${FRAG_ARGS})
+
+
 foreach(dir IN LISTS Vulkan_INCLUDE_DIR INCLUDE_DIRS)
     target_include_directories(${PROJECT_NAME} PUBLIC ${dir})
 endforeach()
