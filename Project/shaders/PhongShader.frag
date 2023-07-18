@@ -1,12 +1,13 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-#define MAX_LIGHTS 100
+#define MAX_LIGHTS 50
 
 layout(binding = 1) uniform GlobalUniformBufferObject {
     vec4[MAX_LIGHTS] lightPos;
     vec4 lightColor;
     vec3 eyePos;
+    int numberOfLights;
 } gubo;
 
 layout(binding = 2) uniform sampler2D tex;
@@ -27,23 +28,23 @@ void main() {
     //point light
     const float beta = 4.0f;
     const float g = 0.5f;
-    for(int i = 0; i < MAX_LIGHTS; i++) {
+    for(int i = 0; i < gubo.numberOfLights; i++) {
         vec3 lightVert = vec3(gubo.lightPos[i]) - fragPos;
         decayFactors[i] = gubo.lightColor.rgb * pow((g / length(lightVert)), beta);
         lightDirs[i] = lightVert / length(lightVert);
     }
 
     vec3[MAX_LIGHTS] lightColorsDecayed;
-    for(int i = 0; i < MAX_LIGHTS; i++){
+    for(int i = 0; i < gubo.numberOfLights; i++){
         lightColorsDecayed[i] = decayFactors[i] * gubo.lightColor.rgb;
     }
 
     vec3[MAX_LIGHTS] diffuse;
     vec3[MAX_LIGHTS] specular;
-    for(int i = 0; i < MAX_LIGHTS; i++){
+    for(int i = 0; i < gubo.numberOfLights; i++){
         diffuse[i] = texture(tex, fragUV).rgb * 0.99f * clamp(dot(norm, lightDirs[i]), 0.0, 1.0);
     }
-    for(int i = 0; i < MAX_LIGHTS; i++){
+    for(int i = 0; i < gubo.numberOfLights; i++){
         specular[i] = vec3(pow(clamp(dot(norm, normalize(lightDirs[i] + eyeDir)),0.0 ,1.0), 60.0f));
     }
     

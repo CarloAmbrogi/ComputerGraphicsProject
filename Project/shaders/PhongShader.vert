@@ -1,7 +1,7 @@
 #version 450
 #extension GL_ARB_separate_shader_objects : enable
 
-#define MAX_LIGHTS 100
+#define MAX_LIGHTS 50
 
 layout(binding = 0) uniform UniformBufferObject {
 	mat4 mvpMat;
@@ -10,7 +10,6 @@ layout(binding = 0) uniform UniformBufferObject {
 } ubo;
 
 layout(binding = 1) uniform GlobalUniformBufferObject {
-	vec4[MAX_LIGHTS] lightPos;
 	vec4 lightColor;
 	vec3 eyePos;
 } gubo;

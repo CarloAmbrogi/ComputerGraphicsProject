@@ -18,7 +18,7 @@ std::vector<SingleText> textToVisualize = {
 // num rows and cols labyrinth
 #define NUMROW 45
 #define NUMCOL 45
-#define MAX_LIGHTS 100
+#define MAX_LIGHTS 50
 
 // The uniform buffer object used in this example
 struct UniformBufferObject {
@@ -31,6 +31,7 @@ struct GlobalUniformBufferObject {
 	alignas(16) glm::vec4 lightPos[MAX_LIGHTS];
 	alignas(16) glm::vec4 lightColor;
 	alignas(16) glm::vec3 eyePos;
+    alignas(4) int numberOfLights;
 };
 
 struct UniformBufferObjectUI {
@@ -56,8 +57,6 @@ class LabyrinthSurvival : public BaseProject {
 
 	// Models, textures and Descriptors (values assigned to the uniforms)
 
-    Model M{};//Model M for the labyrinth
-    DescriptorSet DS;//DescriptorSet DS for the labyrinth
     DescriptorSet DSStartBarYourHP;//DescriptorSet DSStartBarYourHP for the bar of your HP (start)
     DescriptorSet DSEndBarYourHP;//DescriptorSet DSEndBarYourHP for the bar of your HP (end)
     DescriptorSet DSMidBarYourHP;//DescriptorSet DSMidBarYourHP for the bar of your HP (mid)
@@ -314,7 +313,7 @@ class LabyrinthSurvival : public BaseProject {
 
         for (int i = 0; i < effectiveNumberOfWalls; i++) {
             Model wall;
-            wall.init(this, "models/higherWall.obj");//model of a wall
+            wall.init(this, "models/HighWall.obj");//model of a wall
             MW.push_back(wall);
         }
 
@@ -360,37 +359,7 @@ class LabyrinthSurvival : public BaseProject {
 		createMazeMesh(r, c, maze);
 		std::cout << "Mesh size: V=" << vPos.size() << ", I=" << vIdx.size() << "\n";
 
-        //Model of the labyrinth
-        M.BP = this;
-		for(int i = 0; i < vPos.size(); i+=3) {
-            Vertex vertex{};
-            vertex.pos = {vPos[i], vPos[i+1], vPos[i+2]};
-            vertex.norm = {vNorms[i], vNorms[i+1], vNorms[i+2]};
-            //texCoord for the texture of the labyrinth
-            if(i % 4 == 0){
-                vertex.texCoord = {1, 1};
-            }
-            if(i % 4 == 1){
-                vertex.texCoord = {0, 0};
-            }
-            if(i % 4 == 2){
-                vertex.texCoord = {0, 1};
-            }
-            if(i % 4 == 3){
-                vertex.texCoord = {1, 0};
-            }
-            //
-            M.vertices.push_back(vertex);
-		}
-		for(int i = 0; i < vIdx.size(); i++) {
-			if((vIdx[i] < 0) || (vIdx[i] >= M.vertices.size())) {
-				std::cout << "Error! Index: " << i << " is outside range (" << vIdx[i] << ")\n";
-				M.indices.push_back(0);
-			} else {
-				M.indices.push_back(vIdx[i]);
-			}
-		}
-        
+
         //Models of the UI...
         
         //Model of your HP bar
@@ -454,10 +423,6 @@ class LabyrinthSurvival : public BaseProject {
         TKeyTook.init(this, "textures/keyTook.png");
         TnowGoToTheBoss.init(this, "textures/nowGoToTheBoss.png");
 
-		M.createVertexBuffer();
-		M.createIndexBuffer();
-		std::cout << "Created model: V=" << M.vertices.size() << ", I=" << M.indices.size() << "\n";
-        
         MStartBarYourHP.createVertexBuffer();
         MStartBarYourHP.createIndexBuffer();
         
@@ -505,12 +470,6 @@ class LabyrinthSurvival : public BaseProject {
 		// This creates a new pipeline (with the current surface), using its shaders
 		P1.create();
         PUI.create();
-
-		DS.init(this, &DSL1, {
-					{0, UNIFORM, sizeof(UniformBufferObject), nullptr},
-					{1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr},
-                    {2, TEXTURE, 0, &TL}
-				});
 
         DSStartBarYourHP.init(this, &DSLUI, {
                     {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
@@ -649,7 +608,6 @@ class LabyrinthSurvival : public BaseProject {
 		P1.cleanup();
         PUI.cleanup();
 		
-		DS.cleanup();
         DSStartBarYourHP.cleanup();
         DSEndBarYourHP.cleanup();
         DSMidBarYourHP.cleanup();
@@ -710,7 +668,6 @@ class LabyrinthSurvival : public BaseProject {
         TKeyTook.cleanup();
         TnowGoToTheBoss.cleanup();
         
-		M.cleanup();
         MStartBarYourHP.cleanup();
         MEndBarYourHP.cleanup();
         MMidBarYourHP.cleanup();
@@ -762,11 +719,6 @@ class LabyrinthSurvival : public BaseProject {
 
 		P1.bind(commandBuffer);//bind main pipeline
 
-		M.bind(commandBuffer);
-		DS.bind(commandBuffer, P1, currentImage);
-		vkCmdDrawIndexed(commandBuffer,
-				static_cast<uint32_t>(M.indices.size()), 1, 0, 0, 0);
-
         for(int i = 0; i < MK.size(); i++){
             MK[i].bind(commandBuffer);
             DSK[i].bind(commandBuffer, P1, currentImage);
@@ -781,8 +733,6 @@ class LabyrinthSurvival : public BaseProject {
                     static_cast<uint32_t>(MF[i].indices.size()), 1, 0, 0, 0);
         }
 
-		vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(M.indices.size()), 1, 0, 0, 0);
-        
         vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MStartBarYourHP.indices.size()), 1, 0, 0, 0);
         
         vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MEndBarYourHP.indices.size()), 1, 0, 0, 0);
@@ -1364,13 +1314,9 @@ class LabyrinthSurvival : public BaseProject {
         }
 		gubo.lightColor = glm::vec4(1.0f, 0.27f, 0.0f, 1.0f);
 		gubo.eyePos = CamPos;
+        gubo.numberOfLights = effectiveNumberOfLights;
 
-        ubo.mMat = baseTr;
-        ubo.mvpMat = ViewPrj * ubo.mMat;
-        ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
-        DS.map(currentImage, &ubo, sizeof(ubo), 0);
-        DS.map(currentImage, &gubo, sizeof(gubo), 1);
-        
+
         //locate the UI in the scene...
         
         //start your HP bar
