@@ -1,26 +1,11 @@
 #include "Starter.hpp"
-#include "TextMaker.hpp"
-
-std::vector<SingleText> textToVisualize = {
-    {1, {"", "", "", ""}, 0, 0},//0
-    {1, {"Welcome in LabyrinthSurvival", "", "", ""}, 0, 0},//1
-    {1, {"There are different keys to take", "", "", ""}, 0, 0},//2
-    {1, {"There are other 5 keys to take", "", "", ""}, 0, 0},//3
-    {1, {"There are other 4 keys to take", "", "", ""}, 0, 0},//4
-    {1, {"There are other 3 keys to take", "", "", ""}, 0, 0},//5
-    {1, {"There are other 2 keys to take", "", "", ""}, 0, 0},//6
-    {1, {"There is another 1 key to take", "", "", ""}, 0, 0},//7
-    {1, {"Now you can open the door", "", "", ""}, 0, 0},//8
-    {1, {"Labyrinth completed", "", "", ""}, 0, 0},//9
-    {1, {"Labyrinth failed", "", "", ""}, 0, 0},//10
-};
 
 // num rows and cols labyrinth
 #define NUMROW 45
 #define NUMCOL 45
 
 //max number of lights
-#define MAX_LIGHTS 150
+#define MAX_ON_LIGHTS 150
 
 //default random seed for the generation of the labyrinth
 #define DEFAULT_RANDOM_SEED 1
@@ -31,18 +16,21 @@ std::vector<SingleText> textToVisualize = {
 //you can fly (debug)
 #define YOU_CAN_FLY true//shoud be false
 
+//there is the ciel (debug)
+#define THERE_IS_THE_CIEL true//shoud be true
+
 // The uniform buffer object used in this example
 struct UniformBufferObject {
 	alignas(16) glm::mat4 mvpMat;
 	alignas(16) glm::mat4 mMat;
 	alignas(16) glm::mat4 nMat;
-    alignas(4) int roughness;
-    alignas(4) int ao;
-    alignas(4) int metallic;
+    alignas(4) float roughness;
+    alignas(4) float ao;
+    alignas(4) float metallic;
 };
 
 struct GlobalUniformBufferObject {
-	alignas(16) glm::vec4 lightPos[MAX_LIGHTS];
+	alignas(16) glm::vec4 lightPos[MAX_ON_LIGHTS];
 	alignas(16) glm::vec4 lightColor;
 	alignas(16) glm::vec3 eyePos;
     alignas(4) int numberOfLights;
@@ -74,7 +62,8 @@ class LabyrinthSurvival : public BaseProject {
     Pipeline PUI{};//pipeline for the UI
 
 	// Models, textures and Descriptors (values assigned to the uniforms)
-
+    
+    // Descriptor sets for the UI
     DescriptorSet DSStartBarYourHP;//DescriptorSet DSStartBarYourHP for the bar of your HP (start)
     DescriptorSet DSEndBarYourHP;//DescriptorSet DSEndBarYourHP for the bar of your HP (end)
     DescriptorSet DSMidBarYourHP;//DescriptorSet DSMidBarYourHP for the bar of your HP (mid)
@@ -103,6 +92,7 @@ class LabyrinthSurvival : public BaseProject {
     std::vector<DescriptorSet> DSG;//DescriptorSet for the ground
     DescriptorSet DSD;//DescriptorSet for the door
     DescriptorSet DSB;//DescriptorSet for the boss
+    DescriptorSet DSC;//DescriptorSet DSC for the ciel of the labyrinth
 
     // Models ui
     Model MStartBarYourHP{};//Model MStartBarYourHP for the bar of your HP (start)
@@ -133,13 +123,12 @@ class LabyrinthSurvival : public BaseProject {
     std::vector<Model> MG;//model MW for the ground
     Model MD;//model MD for the door
     Model MB;//model MB for the boss
+    Model MC{};//Model MC for the ciel of the labyrinth
 
     // Textures
-    Texture TL, TW, TD, TB, TG, TK, TF;//Texture for the labyrinth, for the wall, the door, the boss, the ground, for the keys, for the food, for your HP bar
+    Texture TC, TW, TD, TB, TG, TK, TF;//Texture for the ciel of the labyrinth, for the wall, the door, the boss, the ground, for the keys, for the food, for your HP bar
     Texture TStartBarYourHP, TEndBarYourHP, TMidBarYourHP, TStartBarBossHP, TEndBarBossHP, TMidBarBossHP, TyourHPwritten, TbossHPwritten, TfindAllTheKeys, TKeyToTake, TKeyTook, TnowGoToTheBoss, TFireIcon;//Texture for your HP bar (start, end and mid), for boss HP bar (start, end and mid), for the written about your HP, for the written about boss HP, for the written that you have to find all the keys, for the keys you have to take icon, for the keys you have took icon, for the written that you have to go to the boss, for the icon of a fire that appears when you hit the boss (during boss fight)
     Texture Tfired, TsafeArea, TnotWatchingTheBoss, TtooDistantFromTheBoss, TbossHurtsYou, TbossHasSlammedYouAgainstToTheWall;//Texture for the writtens during the boss fight
-
-    TextMaker txt;//To insert a text in the UI of this application
 
     // Variables concerning the generated labyrinth
     bool labyrinthShape[NUMROW][NUMCOL];//to keep where there is a wall in the labyrinth
@@ -149,8 +138,9 @@ class LabyrinthSurvival : public BaseProject {
     int effectiveNumberOfWalls = 0;//this var will be set with the number of walls in the labyrinth (after labyrinth generation)
     int effectiveNumberOfFood = 0;//this var will be set with the number of food in the labyrinth (after labyrinth generation)
     int effectiveNumberOfGround = 0;//this var will be set with the number of ground in the labyrinth (after labyrinth generation)
-    int effectiveNumberOfLights = 0;
-
+    int effectiveNumberOfOnLights = 0;//number of effective numbers of on lights (this value will be passed to the shader to turn on these lights
+    int effectiveNumberOfLights = 0;//number of effective numbers of on lights (on or off lights)
+    
     std::vector<int> xKeyPos;//x position of the keys in the labyrinth
     std::vector<int> yKeyPos;//y position of the keys in the labyrinth
     std::vector<int> xFoodPos;//x position of the food in the labyrinth
@@ -271,7 +261,7 @@ class LabyrinthSurvival : public BaseProject {
                        glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
     glm::vec3 groundScale = glm::vec3(0.25f);
 
-    //vPos and vIdx for the model for the labyrinth
+    //vPos and vIdx for the model for the ciel of the labyrinth
 	std::vector<float> vPos;//position of the vertices
     std::vector<float> vNorms;//for each vertex the 3 coordinates of the norm
 	std::vector<int> vIdx;//vertices for triangles
@@ -354,7 +344,7 @@ class LabyrinthSurvival : public BaseProject {
 		// Pipelines [Shader couples]
 		// The last array, is a vector of pointer to the layouts of the sets that will
 		// be used in this pipeline. The first element will be set 0, and so on..
-		P1.init(this, "shaders/PhongVert.spv", "shaders/PhongFrag.spv", {&DSL1});
+		P1.init(this, "shaders/GGXShaderVert.spv", "shaders/GGXShaderFrag.spv", {&DSL1});
         P1.setAdvancedFeatures(VK_COMPARE_OP_LESS, VK_POLYGON_MODE_FILL,
                                      VK_CULL_MODE_NONE, false);
         
@@ -412,11 +402,61 @@ class LabyrinthSurvival : public BaseProject {
 			std::cout << maze[i] << "\n";
 		}
 		std::cout << "\n";
-
-		createMazeMesh(r, c, maze);
-		std::cout << "Mesh size: V=" << vPos.size() << ", I=" << vIdx.size() << "\n";
-
-
+        
+        //Add the ciel
+        const float upWallPoint = 2.0f;
+        int counterCreatedVertex = 0;
+        counterCreatedVertex += 4;
+        int col = c;
+        int row = r;
+        if(!THERE_IS_THE_CIEL){//in case you you don't want to add the ciel
+            col = 0;
+            row = 0;
+        }
+        vPos.push_back(0.0f); vPos.push_back(upWallPoint); vPos.push_back(0.0f);
+        vNorms.push_back(0); vNorms.push_back(-1); vNorms.push_back(0);
+        vPos.push_back(col); vPos.push_back(upWallPoint); vPos.push_back(0.0f);
+        vNorms.push_back(0); vNorms.push_back(-1); vNorms.push_back(0);
+        vPos.push_back(0.0f); vPos.push_back(upWallPoint); vPos.push_back(row);
+        vNorms.push_back(0); vNorms.push_back(-1); vNorms.push_back(0);
+        vPos.push_back(col); vPos.push_back(upWallPoint); vPos.push_back(row);
+        vNorms.push_back(0); vNorms.push_back(-1); vNorms.push_back(0);
+        vIdx.push_back(counterCreatedVertex-4); vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2);
+        vIdx.push_back(counterCreatedVertex-3); vIdx.push_back(counterCreatedVertex-2); vIdx.push_back(counterCreatedVertex-1);
+        
+        std::cout << "Mesh size (for the ciel of the labyrinth): V=" << vPos.size() << ", I=" << vIdx.size() << "\n";
+        
+        //Model of the ciel of the labyrinth
+        MC.BP = this;
+        for(int i = 0; i < vPos.size(); i+=3) {
+            Vertex vertex{};
+            vertex.pos = {vPos[i], vPos[i+1], vPos[i+2]};
+            vertex.norm = {vNorms[i], vNorms[i+1], vNorms[i+2]};
+            //texCoord for the texture of the labyrinth
+            if(i % 4 == 0){
+                vertex.texCoord = {1, 1};
+            }
+            if(i % 4 == 1){
+                vertex.texCoord = {0, 0};
+            }
+            if(i % 4 == 2){
+                vertex.texCoord = {0, 1};
+            }
+            if(i % 4 == 3){
+                vertex.texCoord = {1, 0};
+            }
+            //
+            MC.vertices.push_back(vertex);
+        }
+        for(int i = 0; i < vIdx.size(); i++) {
+            if((vIdx[i] < 0) || (vIdx[i] >= MC.vertices.size())) {
+                std::cout << "Error! Index: " << i << " is outside range (" << vIdx[i] << ")\n";
+                MC.indices.push_back(0);
+            } else {
+                MC.indices.push_back(vIdx[i]);
+            }
+        }
+        
         //Models of the UI...
         
         //Model of your HP bar
@@ -480,7 +520,7 @@ class LabyrinthSurvival : public BaseProject {
         //initialize textures...
         
         //initialize textures for the models of the objects in the labyrinth
-        TL.init(this, "textures/wall.png");
+        TC.init(this, "textures/wall.png");
         TW.init(this, "textures/ModelWallTexture.png");
         TD.init(this, "textures/door.png");
         TB.init(this, "textures/bossTry2.png");
@@ -508,6 +548,11 @@ class LabyrinthSurvival : public BaseProject {
         TbossHurtsYou.init(this, "textures/bossHurtsYou.png");
         TbossHasSlammedYouAgainstToTheWall.init(this, "textures/bossHasSlammedYouAgainstToTheWall.png");
         TFireIcon.init(this, "textures/fire.png");
+        
+        //createVertexBuffer and createIndexBuffer for the model of the ciel of the labyrinth
+        MC.createVertexBuffer();
+        MC.createIndexBuffer();
+        std::cout << "Created model (for the ciel of the labyrinth): V=" << MC.vertices.size() << ", I=" << MC.indices.size() << "\n";
 
         //createVertexBuffer and createIndexBuffer for the models of the UI
         
@@ -571,7 +616,6 @@ class LabyrinthSurvival : public BaseProject {
 
 		destroyMaze(r, c, maze);
 
-        txt.init(this, &textToVisualize);
 	}
 
 	// Here you create your pipelines and Descriptor Sets!
@@ -579,6 +623,13 @@ class LabyrinthSurvival : public BaseProject {
 		// This creates a new pipeline (with the current surface), using its shaders
 		P1.create();
         PUI.create();
+        
+        //initialize Descriptor Sets realted to the ciel of the labyrinth
+        DSC.init(this, &DSL1, {
+                            {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
+                            {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr},
+                            {2, TEXTURE, 0, &TC}
+                        });
         
         //initialize Descriptor Sets realted to the UI
 
@@ -748,7 +799,6 @@ class LabyrinthSurvival : public BaseProject {
             DSG.push_back(DSGround);
         }
 
-        txt.pipelinesAndDescriptorSetsInit();
 	}
 
 	// Here you destroy your pipelines and Descriptor Sets!
@@ -756,6 +806,9 @@ class LabyrinthSurvival : public BaseProject {
         //clean up the pipelines
 		P1.cleanup();
         PUI.cleanup();
+        
+        //clean up Descriptor Sets related to the ciel
+        DSC.cleanup();
 		
         //clean up Descriptor Sets related to the UI
         DSStartBarYourHP.cleanup();
@@ -801,14 +854,13 @@ class LabyrinthSurvival : public BaseProject {
             ds.cleanup();
         }
 
-        txt.pipelinesAndDescriptorSetsCleanup();
 	}
 
 	// Here you destroy all the Models, Texture and Desc. Set Layouts you created!
 	// You also have to destroy the pipelines
 	void localCleanup() {
         //clean up textures related to the objects in the labyrinth
-        TL.cleanup();
+        TC.cleanup();
         TW.cleanup();
         TD.cleanup();
         TB.cleanup();
@@ -863,6 +915,7 @@ class LabyrinthSurvival : public BaseProject {
         MFireIcon.cleanup();
         
         //clean up models related to the objects in the labyrinth
+        MC.cleanup();
         for (Model key : MK){
             key.cleanup();
         }
@@ -889,7 +942,6 @@ class LabyrinthSurvival : public BaseProject {
 		P1.destroy();
         PUI.destroy();
         
-        txt.localCleanup();
 	}
 
 	// Here it is the creation of the command buffer:
@@ -898,6 +950,11 @@ class LabyrinthSurvival : public BaseProject {
 	void populateCommandBuffer(VkCommandBuffer commandBuffer, int currentImage) {
 
 		P1.bind(commandBuffer);//bind main pipeline
+        
+        MC.bind(commandBuffer);
+                DSC.bind(commandBuffer, P1, currentImage);
+                vkCmdDrawIndexed(commandBuffer,
+                        static_cast<uint32_t>(MC.indices.size()), 1, 0, 0, 0);
 
         for(int i = 0; i < MK.size(); i++){
             MK[i].bind(commandBuffer);
@@ -980,6 +1037,8 @@ class LabyrinthSurvival : public BaseProject {
             DSG[i].bind(commandBuffer, P1, currentImage);
             vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MG[i].indices.size()), 1, 0, 0, 0);
         }
+        
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MC.indices.size()), 1, 0, 0, 0);
         
         PUI.bind(commandBuffer);//bind pipeline for the UI
         
@@ -1081,7 +1140,6 @@ class LabyrinthSurvival : public BaseProject {
         vkCmdDrawIndexed(commandBuffer,
                 static_cast<uint32_t>(MFireIcon.indices.size()), 1, 0, 0, 0);
 
-        txt.populateCommandBuffer(commandBuffer, currentImage, 0);
 	}
 
     glm::mat4 MakeWorldMatrix(glm::vec3 pos, glm::quat rQ, glm::vec3 size) {
@@ -1566,12 +1624,12 @@ class LabyrinthSurvival : public BaseProject {
 		// Here is where you actually update your uniforms
 
 		// updates global uniforms
-        for (int i = 2; i < MAX_LIGHTS; i++) {
+        for (int i = 2; i < MAX_ON_LIGHTS; i++) {
             gubo.lightPos[i] = glm::vec4(lightFirePositions[i-1], 1.0f);
         }
 		gubo.lightColor = glm::vec4(1.0f, 0.27f, 0.0f, 1.0f);
 		gubo.eyePos = CamPos;
-        gubo.numberOfLights = effectiveNumberOfLights;
+        gubo.numberOfLights = effectiveNumberOfOnLights;
 
 
         //locate the UI in the scene...
@@ -1800,6 +1858,13 @@ class LabyrinthSurvival : public BaseProject {
         DSFireIcon.map(currentImage, &uboUI, sizeof(uboUI), 0);
         
         //locate models in the scene...
+        
+        //ciel of the labyrinth
+        ubo.mMat = baseTr;
+                ubo.mvpMat = ViewPrj * ubo.mMat;
+                ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
+                DSC.map(currentImage, &ubo, sizeof(ubo), 0);
+                DSC.map(currentImage, &gubo, sizeof(gubo), 1);
         
         //keys
         for(int i = 0; i < MK.size(); i++){
@@ -2234,6 +2299,10 @@ class LabyrinthSurvival : public BaseProject {
         }
         labyrinthShapeInitialized = true;
         // Add the models of the walls
+        //moreover add models on lights on each wall and turn on some of these lights
+        //in the boss area there are more on lights
+        //in impasse there are on lights
+        //there is a max number of on lights
         const int lightFrequence = 7;//fequence to place a light
         const int lightFrequenceBoss = 2;//fequence to place a light in the room of the boss
         int checkInsertLight1 = 0;
@@ -2250,13 +2319,14 @@ class LabyrinthSurvival : public BaseProject {
                                         glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                                         glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
                     wallRots.push_back(rot);
-                    if ((checkInsertLight1 % lightFrequence == 0 || out[i+1][j] == '#' && out[i-1][j] == '#' || out[i][j] == 'B' && checkInsertLight1 % lightFrequenceBoss == 0) && effectiveNumberOfLights < MAX_LIGHTS - 2) {
-                        effectiveNumberOfLights++;
-                        glm::vec3 lightSinglePos = glm::vec3(j+0.025, 0.5, i+0.5);
+                    effectiveNumberOfLights++;//add on every wall an off light
+                    glm::vec3 lightSinglePos = glm::vec3(j+0.025, 0.5, i+0.5);
+                    lightPositions.push_back(lightSinglePos);
+                    lightRots.push_back(rot);
+                    if ((checkInsertLight1 % lightFrequence == 0 || out[i+1][j] == '#' && out[i-1][j] == '#' || out[i][j] == 'B' && checkInsertLight1 % lightFrequenceBoss == 0) && effectiveNumberOfOnLights < MAX_ON_LIGHTS - 2) {
+                        effectiveNumberOfOnLights++;//some of these light will be also turned on
                         glm::vec3 lightFirePos = glm::vec3(j+0.125, 0.6, i+0.5);
-                        lightPositions.push_back(lightSinglePos);
                         lightFirePositions.push_back(lightFirePos);
-                        lightRots.push_back(rot);
                     }
                 }
                 if(out[i][j-1] != '#' && out[i][j] == '#'){
@@ -2268,13 +2338,14 @@ class LabyrinthSurvival : public BaseProject {
                                         glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                                         glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
                     wallRots.push_back(rot);
-                    if ((checkInsertLight2 % lightFrequence == 0 || out[i+1][j-1] == '#' && out[i-1][j-1] == '#' || out[i][j-1] == 'B' && checkInsertLight2 % lightFrequenceBoss == 0) && effectiveNumberOfLights < MAX_LIGHTS - 2) {
-                        effectiveNumberOfLights++;
-                        glm::vec3 lightSinglePos = glm::vec3(j-0.025, 0.5, i+0.5);
+                    effectiveNumberOfLights++;//add on every wall an off light
+                    glm::vec3 lightSinglePos = glm::vec3(j-0.025, 0.5, i+0.5);
+                    lightPositions.push_back(lightSinglePos);
+                    lightRots.push_back(rot);
+                    if ((checkInsertLight2 % lightFrequence == 0 || out[i+1][j-1] == '#' && out[i-1][j-1] == '#' || out[i][j-1] == 'B' && checkInsertLight2 % lightFrequenceBoss == 0) && effectiveNumberOfOnLights < MAX_ON_LIGHTS - 2) {
+                        effectiveNumberOfOnLights++;//some of these light will be also turned on
                         glm::vec3 lightFirePos = glm::vec3(j-0.125, 0.6, i+0.5);
-                        lightPositions.push_back(lightSinglePos);
                         lightFirePositions.push_back(lightFirePos);
-                        lightRots.push_back(rot);
                     }
                 }
             }
@@ -2291,13 +2362,14 @@ class LabyrinthSurvival : public BaseProject {
                                         glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                                         glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
                     wallRots.push_back(rot);
-                    if ((checkInsertLight1 % lightFrequence == 0 || out[i][j+1] == '#' && out[i][j-1] == '#' || out[i][j] == 'B' && effectiveNumberOfWalls % lightFrequenceBoss == 0) && checkInsertLight1 < MAX_LIGHTS - 2) {
-                        effectiveNumberOfLights++;
-                        glm::vec3 lightSinglePos = glm::vec3(j+0.5, 0.5, i+0.025);
+                    effectiveNumberOfLights++;//add on every wall an off light
+                    glm::vec3 lightSinglePos = glm::vec3(j+0.5, 0.5, i+0.025);
+                    lightPositions.push_back(lightSinglePos);
+                    lightRots.push_back(rot);
+                    if ((checkInsertLight1 % lightFrequence == 0 || out[i][j+1] == '#' && out[i][j-1] == '#' || out[i][j] == 'B' && effectiveNumberOfWalls % lightFrequenceBoss == 0) && checkInsertLight1 < MAX_ON_LIGHTS - 2) {
+                        effectiveNumberOfOnLights++;//some of these light will be also turned on
                         glm::vec3 lightFirePos = glm::vec3(j+0.5, 0.6, i+0.125);
-                        lightPositions.push_back(lightSinglePos);
                         lightFirePositions.push_back(lightFirePos);
-                        lightRots.push_back(rot);
                     }
                 }
                 if(out[i-1][j] != '#' && out[i][j] == '#'){
@@ -2309,17 +2381,18 @@ class LabyrinthSurvival : public BaseProject {
                                         glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                                         glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
                     wallRots.push_back(rot);
-                    if ((checkInsertLight2 % lightFrequence == 0 || out[i-1][j+1] == '#' && out[i-1][j-1] == '#' || out[i-1][j] == 'B' && checkInsertLight2 % lightFrequenceBoss == 0) && effectiveNumberOfLights < MAX_LIGHTS - 2) {
-                        effectiveNumberOfLights++;
-                        glm::vec3 lightSinglePos =  glm::vec3(j+0.5, 0.5, i-0.025);
+                    effectiveNumberOfLights++;//add on every wall an off light
+                    glm::vec3 lightSinglePos =  glm::vec3(j+0.5, 0.5, i-0.025);
+                    lightRots.push_back(rot);
+                    if ((checkInsertLight2 % lightFrequence == 0 || out[i-1][j+1] == '#' && out[i-1][j-1] == '#' || out[i-1][j] == 'B' && checkInsertLight2 % lightFrequenceBoss == 0) && effectiveNumberOfOnLights < MAX_ON_LIGHTS - 2) {
+                        effectiveNumberOfOnLights++;//some of these light will be also turned on
                         glm::vec3 lightFirePos = glm::vec3(j+0.5, 0.6, i-0.125);
                         lightPositions.push_back(lightSinglePos);
-                        lightRots.push_back(rot);
                     }
                 }
             }
         }
-        std::cout << "number of lights: " << effectiveNumberOfLights << std::endl;
+        std::cout << "number of on lights: " << effectiveNumberOfOnLights << std::endl;
         // Return
 		return out;
 	}
@@ -2331,10 +2404,7 @@ class LabyrinthSurvival : public BaseProject {
 		free(maze);
 	}
 
-	void createMazeMesh(int row, int col, char **maze);
 };
-
-#include "mazeGen.hpp"
 
 // This is the main: probably you do not need to touch this!
 int main() {

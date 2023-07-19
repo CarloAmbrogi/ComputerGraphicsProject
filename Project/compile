@@ -1,6 +1,6 @@
-glslc shaders/PhongShader.frag -o shaders/PhongFrag.spv
+glslc shaders/GGXShader.frag -o shaders/GGXShaderFrag.spv
 
-glslc shaders/PhongShader.vert -o shaders/PhongVert.spv
+glslc shaders/GGXShader.vert -o shaders/GGXShaderVert.spv
 
 glslc shaders/ui.frag -o shaders/uiFrag.spv
 

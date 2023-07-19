@@ -1,3 +1,1 @@
-Finisco di sistemare le ultime cose della UI: metto anche un'indicatore che indica quanto forte hai colpito il boss, le scritte hai vinto / hai perso, l'animazione di quando sparisce il boss (se lo sconfiggi) e la possibilità di ricominciare da capo premendo il tasto P!!!
-Il soffitto
-Togliere la libreria della scritta del prof
+le scritte hai vinto / hai perso, l'animazione di quando sparisce il boss (se lo sconfiggi) e la possibilità di ricominciare da capo premendo il tasto P!!!
