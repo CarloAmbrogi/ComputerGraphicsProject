@@ -1478,11 +1478,11 @@ class LabyrinthSurvival : public BaseProject {
         // In case you take a food
         for(int i = 0; i < effectiveNumberOfFood; i++){
             if(x == xFoodPos[i] && y == yFoodPos[i] && tookFood[i] == false){
-                std::cout << "You took a food\n";
+                if(tookFood[i] == false){
+                    std::cout << "You took a food\n";
+                    yourHP += 6.8f;//you recover 6.8f HP when you take a food
+                }
                 tookFood[i] = true;
-                foodPos[i] = notVisiblePosition;
-                //you recover 6.8f HP when you take a food
-                yourHP += 6.8f;
             }
         }
 
