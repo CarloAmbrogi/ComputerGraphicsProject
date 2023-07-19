@@ -25,6 +25,9 @@ struct UniformBufferObject {
 	alignas(16) glm::mat4 mvpMat;
 	alignas(16) glm::mat4 mMat;
 	alignas(16) glm::mat4 nMat;
+    alignas(4) int roughness;
+    alignas(4) int ao;
+    alignas(4) int metallic;
 };
 
 struct GlobalUniformBufferObject {
@@ -67,10 +70,20 @@ class LabyrinthSurvival : public BaseProject {
     DescriptorSet DSbossHPwritten;//DescriptorSet DSbossHPwritten for the written about boss HP
     DescriptorSet DSfindAllTheKeys;//DescriptorSet DSfindAllTheKeys for the written that you have to find all the keys
     DescriptorSet DSnowGoToTheBoss;//DescriptorSet DSnowGoToTheBoss for the written that you have to go to the boss
-    Texture TL, TW, TD, TB, TG, TK, TF;//Texture for the labyrinth, for the wall, the door, the boss, the ground, for the keys, for the food, for your HP bar
-    Texture TStartBarYourHP, TEndBarYourHP, TMidBarYourHP, TStartBarBossHP, TEndBarBossHP, TMidBarBossHP, TyourHPwritten, TbossHPwritten, TfindAllTheKeys, TKeyToTake, TKeyTook, TnowGoToTheBoss;//Texture for your HP bar (start, end and mid), for boss HP bar (start, end and mid), for the written about your HP, for the written about boss HP, for the written that you have to find all the keys, for the keys you have to take icon, for the keys you have took icon, for the written that you have to go to the boss
-    std::vector<Model> MK;//model MK for the keys
-    std::vector<Model> MF;//model MF for the food
+    std::vector<DescriptorSet> DSKeyToTake;//DescriptorSet DSKeyToTake for the keys you have to take icon
+    std::vector<DescriptorSet> DSKeyTook;//DescriptorSet DSKeyTook for the keys you have took icon
+
+
+    // Descriptor sets game
+    std::vector<DescriptorSet> DSW;//DescriptorSet for the walls
+    std::vector<DescriptorSet> DSLights;//DescriptorSet for the lights
+    std::vector<DescriptorSet> DSK;//DescriptorSet DSK for the keys
+    std::vector<DescriptorSet> DSF;//DescriptorSet DSF for the food
+    std::vector<DescriptorSet> DSG;//DescriptorSet for the ground
+    DescriptorSet DSD;//DescriptorSet for the door
+    DescriptorSet DSB;//DescriptorSet for the boss
+
+    // Models ui
     Model MStartBarYourHP{};//Model MStartBarYourHP for the bar of your HP (start)
     Model MEndBarYourHP{};//Model MEndBarYourHP for the bar of your HP (end)
     Model MMidBarYourHP{};//Model MMidBarYourHP for the bar of your HP (mid)
@@ -80,23 +93,22 @@ class LabyrinthSurvival : public BaseProject {
     Model MMidBarBossHP{};//Model MMidBarBossHP for the bar of boss HP (mid)
     Model MbossHPwritten{};//Model MbossHPwritten for the written about boss HP
     Model MfindAllTheKeys{};//Model MfindAllTheKeys for the written that you have to find all the keys
+    Model MnowGoToTheBoss{};//Model MnowGoToTheBoss for the written that you have to go to the boss
     std::vector<Model> MKeyToTake;//model MKeyToTake for the keys you have to take icon
     std::vector<Model> MKeyTook;//model MKeyTook for the keys you have took icon
-    std::vector<DescriptorSet> DSKeyToTake;//DescriptorSet DSKeyToTake for the keys you have to take icon
-    std::vector<DescriptorSet> DSKeyTook;//DescriptorSet DSKeyTook for the keys you have took icon
-    Model MnowGoToTheBoss{};//Model MnowGoToTheBoss for the written that you have to go to the boss
-    std::vector<DescriptorSet> DSK;//DescriptorSet DSK for the keys
-    std::vector<DescriptorSet> DSF;//DescriptorSet DSF for the food
+
+    // Models game
     std::vector<Model> MW;//model MW for the walls
     std::vector<Model> MLights;//model MW for the lights
+    std::vector<Model> MK;//model MK for the keys
+    std::vector<Model> MF;//model MF for the food
+    std::vector<Model> MG;//model MW for the ground
     Model MD;//model MD for the door
     Model MB;//model MB for the boss
-    std::vector<Model> MG;//model MW for the ground
-    std::vector<DescriptorSet> DSW;//DescriptorSet for the walls
-    std::vector<DescriptorSet> DSLights;//DescriptorSet for the lights
-    DescriptorSet DSD;//DescriptorSet for the door
-    DescriptorSet DSB;//DescriptorSet for the boss
-    std::vector<DescriptorSet> DSG;//DescriptorSet for the ground
+
+    // Textures
+    Texture TL, TW, TD, TB, TG, TK, TF;//Texture for the labyrinth, for the wall, the door, the boss, the ground, for the keys, for the food, for your HP bar
+    Texture TStartBarYourHP, TEndBarYourHP, TMidBarYourHP, TStartBarBossHP, TEndBarBossHP, TMidBarBossHP, TyourHPwritten, TbossHPwritten, TfindAllTheKeys, TKeyToTake, TKeyTook, TnowGoToTheBoss;//Texture for your HP bar (start, end and mid), for boss HP bar (start, end and mid), for the written about your HP, for the written about boss HP, for the written that you have to find all the keys, for the keys you have to take icon, for the keys you have took icon, for the written that you have to go to the boss
 
     TextMaker txt;//To insert a text in the UI of this application
 
@@ -300,7 +312,6 @@ class LabyrinthSurvival : public BaseProject {
         P1.setAdvancedFeatures(VK_COMPARE_OP_LESS, VK_POLYGON_MODE_FILL,
                                      VK_CULL_MODE_NONE, false);
         
-        std::cout << "PUI\n";
         PUI.init(this, "shaders/uiVert.spv", "shaders/uiFrag.spv", {&DSLUI});
         PUI.setAdvancedFeatures(VK_COMPARE_OP_LESS, VK_POLYGON_MODE_FILL,
                                      VK_CULL_MODE_NONE, false);
@@ -1490,6 +1501,9 @@ class LabyrinthSurvival : public BaseProject {
             ubo.mMat = MakeWorldMatrix(foodPos[i], FoodRot, FoodScale) * baseTr;//translate the key to locate
             ubo.mvpMat = ViewPrj * ubo.mMat;
             ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
+            ubo.roughness = 0.1;
+            ubo.ao = 0.5;
+            ubo.metallic = 1.0;
             DSF[i].map(currentImage, &ubo, sizeof(ubo), 0);
             DSF[i].map(currentImage, &gubo, sizeof(gubo), 1);
         }
@@ -1499,6 +1513,9 @@ class LabyrinthSurvival : public BaseProject {
             ubo.mMat = MakeWorldMatrix(wallPos[i], wallRots[i], wallScale) * baseTr;//translate and rotate the walls to locate
             ubo.mvpMat = ViewPrj * ubo.mMat;
             ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
+            ubo.roughness = 0.5;
+            ubo.ao = 0.5;
+            ubo.metallic = 0.5;
             DSW[i].map(currentImage, &ubo, sizeof(ubo), 0);
             DSW[i].map(currentImage, &gubo, sizeof(gubo), 1);
         }
