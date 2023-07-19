@@ -14,7 +14,7 @@
 #define OBTAIN_AUTOMATICALLY_ALL_THE_KEYS false//shoud be false
 
 //you can fly (debug)
-#define YOU_CAN_FLY true//shoud be false
+#define YOU_CAN_FLY false//shoud be false
 
 //there is the ciel (debug)
 #define THERE_IS_THE_CIEL true//shoud be true
@@ -83,6 +83,8 @@ class LabyrinthSurvival : public BaseProject {
     DescriptorSet DSWbossHurtsYou;//DescriptorSet DSWtooDistantFromTheBoss for the written that the boss hurts you (during boss fight)
     DescriptorSet DSWbossHasSlammedYouAgainstToTheWall;//DescriptorSet DSWbossHasSlammedYouAgainstToTheWall for the written that the boss has slummed you againist the wall (during boss fight)
     DescriptorSet DSFireIcon;//DescriptorSet DSFireIcon for the icon of a fire that appears when you hit the boss (during boss fight)
+    DescriptorSet DSYouWinIcon;//DescriptorSet DSYouWinIcon for the icon that you win
+    DescriptorSet DSYouLoseIcon;//DescriptorSet DSYouLoseIcon for the icon that you lose
 
     // Descriptor sets game
     std::vector<DescriptorSet> DSW;//DescriptorSet for the walls
@@ -114,6 +116,8 @@ class LabyrinthSurvival : public BaseProject {
     Model MWbossHurtsYou{};//Model MWbossHurtsYou for the written that the boss hurts you (during boss fight)
     Model MWbossHasSlammedYouAgainstToTheWall{};//Model MWbossHasSlammedYouAgainstToTheWall for the written that the boss has slummed you againist the wall (during boss fight)
     Model MFireIcon;//Model MFireIcon for the icon of a fire that appears when you hit the boss (during boss fight)
+    Model MYouWinIcon;//Model MYouWinIcon for the icon that you win
+    Model MYouLoseIcon;//Model MYouLoseIcon for the icon that you lose
 
     // Models game
     std::vector<Model> MW;//model MW for the walls
@@ -127,7 +131,7 @@ class LabyrinthSurvival : public BaseProject {
 
     // Textures
     Texture TC, TW, TD, TB, TG, TK, TF;//Texture for the ciel of the labyrinth, for the wall, the door, the boss, the ground, for the keys, for the food, for your HP bar
-    Texture TStartBarYourHP, TEndBarYourHP, TMidBarYourHP, TStartBarBossHP, TEndBarBossHP, TMidBarBossHP, TyourHPwritten, TbossHPwritten, TfindAllTheKeys, TKeyToTake, TKeyTook, TnowGoToTheBoss, TFireIcon;//Texture for your HP bar (start, end and mid), for boss HP bar (start, end and mid), for the written about your HP, for the written about boss HP, for the written that you have to find all the keys, for the keys you have to take icon, for the keys you have took icon, for the written that you have to go to the boss, for the icon of a fire that appears when you hit the boss (during boss fight)
+    Texture TStartBarYourHP, TEndBarYourHP, TMidBarYourHP, TStartBarBossHP, TEndBarBossHP, TMidBarBossHP, TyourHPwritten, TbossHPwritten, TfindAllTheKeys, TKeyToTake, TKeyTook, TnowGoToTheBoss, TFireIcon, TYouWinIcon, TYouLoseIcon;//Texture for your HP bar (start, end and mid), for boss HP bar (start, end and mid), for the written about your HP, for the written about boss HP, for the written that you have to find all the keys, for the keys you have to take icon, for the keys you have took icon, for the written that you have to go to the boss, for the icon of a fire that appears when you hit the boss (during boss fight), for the icon that you win, for the icon that you lose
     Texture Tfired, TsafeArea, TnotWatchingTheBoss, TtooDistantFromTheBoss, TbossHurtsYou, TbossHasSlammedYouAgainstToTheWall;//Texture for the writtens during the boss fight
 
     // Variables concerning the generated labyrinth
@@ -159,7 +163,8 @@ class LabyrinthSurvival : public BaseProject {
     // Others variables useful when playing
     float yourHP = 40.0f;//at the beginning you have 40 HP
     float bossHP = 0.0f;//at the beginning there isn't the boss (0 HP) because he has to appire when you arrive to the boss room
-    bool youLose = false;//if you lose all HP you lose
+    bool youLose = false;//if you lose all HP and you haven't won you lose
+    bool youWin = false;//if you are in the boss fight and the boss lose all HP and you haven't lose, you win
     
     // parameters to place elements in the UI...
     //locations and dimensions of some UI elements
@@ -193,6 +198,12 @@ class LabyrinthSurvival : public BaseProject {
     const float fireIconY = -0.9f;
     const float dimBaseFireIconX = 0.05f;
     const float dimBaseFireIconY = 0.05f;
+    //location and dimension for the icons that you win or you lose
+    const float youWinLoseX = -0.95f;
+    const float youWinLoseY = -0.55f;
+    const float dimYouWinLoseY = 0.05f;
+    const float dimyouWinX = 0.23f;
+    const float dimyouLoseX = 0.85f;
 
     //variables for the boss pattern (the boss has a pattern that sometimes approaches you and sometimes goes away from you)
     const float timeBossApproachYou = 4.5f;//how much time the boss approaches you
@@ -203,14 +214,16 @@ class LabyrinthSurvival : public BaseProject {
 
 	// Other application parameters
 	glm::vec3 CamPos = glm::vec3(0.5, 0.5, 10.0);//camera position
+    glm::vec3 CamPosOriginal = glm::vec3(0.5, 0.5, 10.0);//useful to reset the labirinth
     glm::vec3 CamPosPrec = glm::vec3(0.5, 0.5, 10.0);//remember prew position to check if you are not overriding a wall
     float CamAlpha = glm::radians(0.0f);
+    float CamAlphaOriginal = glm::radians(0.0f);//useful to reset the labirinth
     float CamBeta = glm::radians(0.0f);
 	float Ar;//aspect ratio
-    glm::vec3 notVisiblePosition = glm::vec3(-1, -1, -1);//a position to place an object witch disappear
+    glm::vec3 notVisiblePosition = glm::vec3(-5, -5, -5);//a position to place an object witch disappears
 
-    const float notVisibleUIXPosition = -100.0f;//a position X to place an object of the UI witch disappear
-    const float notVisibleUIYPosition = -100.0f;//a position Y to place an object of the UI witch disappear
+    const float notVisibleUIXPosition = -100.0f;//a position X to place an object of the UI witch disappears
+    const float notVisibleUIYPosition = -100.0f;//a position Y to place an object of the UI witch disappears
 
     //parameters for the key pos, rot and scale
     std::vector<glm::vec3> keyPos;
@@ -244,9 +257,10 @@ class LabyrinthSurvival : public BaseProject {
 
     //parameters for the boss pos, rot and scale
     glm::vec3 bossPos;
+    glm::vec3 bossPosOriginal;//useful to reset the labirinth
     float bossRot;
     float bossScale = 0.0f;
-    float maxBossScale = 2.25f;//when the boss fight starts there is an animation that the boss appear form 0 to max scale
+    const float maxBossScale = 2.25f;//when the boss fight starts there is an animation that the boss appear form 0 to max scale
 
     //limit the area where the boss can stay
     float xStartLimitBossPos;
@@ -517,6 +531,12 @@ class LabyrinthSurvival : public BaseProject {
         MFireIcon.BP = this;
         addUiElement(&MFireIcon, fireIconX, fireIconY, dimBaseFireIconX, dimBaseFireIconY);
         
+        //Models for the icons that you win or lose
+        MYouWinIcon.BP = this;
+        addUiElement(&MYouWinIcon, youWinLoseX, youWinLoseY, dimyouWinX, dimYouWinLoseY);
+        MYouLoseIcon.BP = this;
+        addUiElement(&MYouLoseIcon, youWinLoseX, youWinLoseY, dimyouLoseX, dimYouWinLoseY);
+        
         //initialize textures...
         
         //initialize textures for the models of the objects in the labyrinth
@@ -548,6 +568,8 @@ class LabyrinthSurvival : public BaseProject {
         TbossHurtsYou.init(this, "textures/bossHurtsYou.png");
         TbossHasSlammedYouAgainstToTheWall.init(this, "textures/bossHasSlammedYouAgainstToTheWall.png");
         TFireIcon.init(this, "textures/fire.png");
+        TYouWinIcon.init(this, "textures/youWin.png");
+        TYouLoseIcon.init(this, "textures/youLose.png");
         
         //createVertexBuffer and createIndexBuffer for the model of the ciel of the labyrinth
         MC.createVertexBuffer();
@@ -613,6 +635,12 @@ class LabyrinthSurvival : public BaseProject {
         
         MFireIcon.createVertexBuffer();
         MFireIcon.createIndexBuffer();
+        
+        MYouWinIcon.createVertexBuffer();
+        MYouWinIcon.createIndexBuffer();
+        
+        MYouLoseIcon.createVertexBuffer();
+        MYouLoseIcon.createIndexBuffer();
 
 		destroyMaze(r, c, maze);
 
@@ -735,6 +763,16 @@ class LabyrinthSurvival : public BaseProject {
                     {1, TEXTURE, 0, &TFireIcon}
                 });
         
+        DSYouWinIcon.init(this, &DSLUI, {
+                    {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
+                    {1, TEXTURE, 0, &TYouWinIcon}
+                });
+        
+        DSYouLoseIcon.init(this, &DSLUI, {
+                    {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
+                    {1, TEXTURE, 0, &TYouLoseIcon}
+                });
+        
         //initialize Descriptor Sets realted to the objects in the labyrinth
         
         for(int i = 0; i < effectiveNumberOfKeys; i++){
@@ -834,6 +872,8 @@ class LabyrinthSurvival : public BaseProject {
         DSWbossHurtsYou.cleanup();
         DSWbossHasSlammedYouAgainstToTheWall.cleanup();
         DSFireIcon.cleanup();
+        DSYouWinIcon.cleanup();
+        DSYouLoseIcon.cleanup();
         
         //clean up Descriptor Sets related to the objects in the labyrinth
         for(DescriptorSet ds : DSK){
@@ -888,6 +928,8 @@ class LabyrinthSurvival : public BaseProject {
         TbossHurtsYou.cleanup();
         TbossHasSlammedYouAgainstToTheWall.cleanup();
         TFireIcon.cleanup();
+        TYouWinIcon.cleanup();
+        TYouLoseIcon.cleanup();
         
         //clean up models related to the UI
         MStartBarYourHP.cleanup();
@@ -913,6 +955,8 @@ class LabyrinthSurvival : public BaseProject {
         MWbossHurtsYou.cleanup();
         MWbossHasSlammedYouAgainstToTheWall.cleanup();
         MFireIcon.cleanup();
+        MYouWinIcon.cleanup();
+        MYouLoseIcon.cleanup();
         
         //clean up models related to the objects in the labyrinth
         MC.cleanup();
@@ -1010,6 +1054,10 @@ class LabyrinthSurvival : public BaseProject {
         vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MWbossHasSlammedYouAgainstToTheWall.indices.size()), 1, 0, 0, 0);
         
         vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MFireIcon.indices.size()), 1, 0, 0, 0);
+        
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MYouWinIcon.indices.size()), 1, 0, 0, 0);
+        
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MYouLoseIcon.indices.size()), 1, 0, 0, 0);
         
         for (int i = 0; i < MW.size(); i++) {
             MW[i].bind(commandBuffer);
@@ -1139,6 +1187,16 @@ class LabyrinthSurvival : public BaseProject {
         DSFireIcon.bind(commandBuffer, PUI, currentImage);
         vkCmdDrawIndexed(commandBuffer,
                 static_cast<uint32_t>(MFireIcon.indices.size()), 1, 0, 0, 0);
+        
+        MYouWinIcon.bind(commandBuffer);
+        DSYouWinIcon.bind(commandBuffer, PUI, currentImage);
+        vkCmdDrawIndexed(commandBuffer,
+                static_cast<uint32_t>(MYouWinIcon.indices.size()), 1, 0, 0, 0);
+        
+        MYouLoseIcon.bind(commandBuffer);
+        DSYouLoseIcon.bind(commandBuffer, PUI, currentImage);
+        vkCmdDrawIndexed(commandBuffer,
+                static_cast<uint32_t>(MYouLoseIcon.indices.size()), 1, 0, 0, 0);
 
 	}
 
@@ -1203,8 +1261,9 @@ class LabyrinthSurvival : public BaseProject {
         static bool goingInstantRight = false;//you are continuing to go to watch to the nearest 90 degree angle on your right because you have decided about this before
         bool goInstantLeft = false;//you decide to watch to the nearest 90 degree angle on your left
         bool goInstantRight = false;//you decide to watch to the nearest 90 degree angle on your right
+        bool youWantToRestartThisLabyrinth = false;//you decide to restart with this labyrinth
 
-		getSixAxis(deltaT, m, r, fire, goInstantLeft, goInstantRight);
+		getSixAxis(deltaT, m, r, fire, goInstantLeft, goInstantRight, youWantToRestartThisLabyrinth);
 
         //check if you have to (continue to) go to watch a nearest 90 degree angle
         if(goInstantLeft){
@@ -1371,13 +1430,15 @@ class LabyrinthSurvival : public BaseProject {
         }
         
         //periodically you lose some HP
-        yourHP -= deltaT * 0.5f;
-        if(yourHP < 0.0f){
-            yourHP = 0.0f;
-            if(!youLose){
-                youLose = true;
-                std::cout << "you lose!\n";
-                //TODO implemen here that the game end
+        if(!youWin){
+            yourHP -= deltaT * 0.5f;
+            if(yourHP < 0.0f){
+                yourHP = 0.0f;
+                if(!youLose && !youWin){
+                    youLose = true;
+                    std::cout << "you lose!\n";
+                    //TODO implemen here that the game end
+                }
             }
         }
         
@@ -1471,14 +1532,17 @@ class LabyrinthSurvival : public BaseProject {
         // in case you are too near to the boss the boss the boss deals damage to you and you walk away morover you lose some life
         const float minDistFromTheBoss = 1.0f;
         const float maxDistFromTheBoss = 2.0f;//distance to walk away from the boss
+        const float damageHP = 5.0f;
         if(distBossYou < minDistFromTheBoss || youNeedToWalkAwayFromTheBoss){
             if(youNeedToWalkAwayFromTheBoss == false){//in this instant the boss hurts you
                 std::cout << "the boss hurts you\n";
                 writtenDuringBossFightToVisualize = writtenDuringBossFight::bossHurtsYou;
                 const float fireChargingPenality = 0.75f;//a penality to wait some time to fire if the boss hurts you
                 fireCharging = fireChargingPenality;
-                //you take damage and you lose 5 HP
-                yourHP -= 5.0f;
+                //you take damage and you lose some HPs
+                if(!youWin){
+                    yourHP -= damageHP;
+                }
             }
             youNeedToWalkAwayFromTheBoss = true;
             float walkAwayXIncr = WALK_AWAY_SPEED * cos(dirBossYou);
@@ -1497,8 +1561,10 @@ class LabyrinthSurvival : public BaseProject {
                     tiltTimeCounter = tiltTimePenality;
                     std::cout << "you are slammed against the wall and you take extra damages\n";
                     writtenDuringBossFightToVisualize = writtenDuringBossFight::bossHasSlammedYouAgainstToTheWall;
-                    //you take extra damages and you lose other 5 HP
-                    yourHP -= 5.0f;
+                    //you take extra damages and you lose other HPs
+                    if(!youWin){
+                        yourHP -= damageHP;
+                    }
                 }
             }
             if(distBossYou >= maxDistFromTheBoss){
@@ -1594,6 +1660,54 @@ class LabyrinthSurvival : public BaseProject {
             } else {
                 std::cout << "You can't fire if the boss fight isn't started\n";
             }
+        }
+        
+        //check if maybe you have won
+        if(bossHP <= 0.0f && bossFightStartedAnimationFinished && !youLose){
+            youWin = true;
+            //in this case there is also an animation that the boss disappears
+            const float bossDisappearsSpeed = 0.5f;
+            bossPos += glm::vec3(0.0f, -bossDisappearsSpeed * deltaT, 0.0f);
+            const float posBossToDisapperaDefinitely = -1.5f;
+            if(bossPos.y < posBossToDisapperaDefinitely){
+                bossPos = notVisiblePosition;
+            }
+        }
+        
+        //in case you won there won't be any written about the boss fight
+        if(youWin){
+            writtenDuringBossFightToVisualize = writtenDuringBossFight::none;
+        }
+        
+        //in case you want to restart with this labyrint all vars are resetted
+        if(youWantToRestartThisLabyrinth){
+            std::cout << "Restart with this labyrint!\n";
+            //reset all vars
+            for(int i = 0; i < effectiveNumberOfKeys; i++){
+                tookKey[i] = OBTAIN_AUTOMATICALLY_ALL_THE_KEYS;
+            }
+            for(int i = 0; i < effectiveNumberOfFood; i++){
+                tookFood[i] = false;
+            }
+            bossFightStarted = false;
+            bossFightStartedAnimationFinished = false;
+            youNeedToWalkAwayFromTheBoss = false;
+            fireCharging = 0.0f;
+            tiltTimeCounter = 0.0f;
+            lastFirePow = 0.0f;
+            yourHP = 40.0f;
+            bossHP = 0.0f;
+            youLose = false;
+            youWin = false;
+            timeBossPatternCounter = 0.0f;
+            bossPatternMultiplier = 1.0f;
+            CamBeta = glm::radians(0.0f);
+            CamAlpha = CamAlphaOriginal;
+            CamPos = CamPosOriginal;
+            writtenDuringBossFightToVisualize = writtenDuringBossFight::none;
+            bossPos = bossPosOriginal;
+            bossRot = 0.0f;
+            bossScale = 0.0f;
         }
 
         // close the application
@@ -1857,6 +1971,26 @@ class LabyrinthSurvival : public BaseProject {
         uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
         DSFireIcon.map(currentImage, &uboUI, sizeof(uboUI), 0);
         
+        //icon that you win
+        if(youWin){
+            uboUI.mMat = ObtainWorldMatrixForUI(0.0f, 0.0f, 1.0f, 1.0f);//visualize that you win
+        } else {
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIYPosition, 1.0f, 1.0f);//don't visualize that you win
+        }
+        uboUI.mvpMat = ViewPrj * uboUI.mMat;
+        uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
+        DSYouWinIcon.map(currentImage, &uboUI, sizeof(uboUI), 0);
+        
+        //icon that you lose
+        if(youLose){
+            uboUI.mMat = ObtainWorldMatrixForUI(0.0f, 0.0f, 1.0f, 1.0f);//visualize that you lose
+        } else {
+            uboUI.mMat = ObtainWorldMatrixForUI(notVisibleUIXPosition, notVisibleUIYPosition, 1.0f, 1.0f);//don't visualize that you lose
+        }
+        uboUI.mvpMat = ViewPrj * uboUI.mMat;
+        uboUI.nMat = glm::inverse(glm::transpose(uboUI.mMat));
+        DSYouLoseIcon.map(currentImage, &uboUI, sizeof(uboUI), 0);
+        
         //locate models in the scene...
         
         //ciel of the labyrinth
@@ -1992,6 +2126,7 @@ class LabyrinthSurvival : public BaseProject {
                             glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
                             glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));//locate the door (rotation)
         bossPos = glm::vec3(startYBossFight+(yLenghtBossFight/2), 0.0, startXBossFight+(xLenghtBossFight/2)+0.5);//locate the boss (position)
+        bossPosOriginal = bossPos;
         bossRot = 0.0f;//locate the boss (rotation)
         // Limit the movements of the boss
         const float minDistFromWallBoss = 0.75f;
@@ -2245,6 +2380,8 @@ class LabyrinthSurvival : public BaseProject {
                                         }
                                     }
                                 }
+                                CamAlphaOriginal = CamAlpha;
+                                CamPosOriginal = CamPos;
                                 locatingWhat++;
                             } else if(locatingWhat == 1){//keys
                                 out[i][j] = 'K';

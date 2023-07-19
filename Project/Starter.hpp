@@ -1771,7 +1771,7 @@ std::cout << NAr << " " << poolSizes.size() << "\n";
 			}
 	}
 		
-	void getSixAxis(float &deltaT, glm::vec3 &m, glm::vec3 &r, bool &fire, bool &instantLeft, bool &instantRight) {
+	void getSixAxis(float &deltaT, glm::vec3 &m, glm::vec3 &r, bool &fire, bool &instantLeft, bool &instantRight, bool &youWantToRestartThisLabyrinth) {
 		static auto startTime = std::chrono::high_resolution_clock::now();
 		static float lastTime = 0.0f;
 		
@@ -1837,6 +1837,8 @@ std::cout << NAr << " " << poolSizes.size() << "\n";
         
         instantLeft = glfwGetKey(window, GLFW_KEY_J);//watch to the nearest 90 degree angle on your left
         instantRight = glfwGetKey(window, GLFW_KEY_L);//watch to the nearest 90 degree angle on your right
+        
+        youWantToRestartThisLabyrinth = glfwGetKey(window, GLFW_KEY_P);//in you want to restart with the labyrinth you can push P key
         
 		handleGamePad(GLFW_JOYSTICK_1,m,r,fire);
 		handleGamePad(GLFW_JOYSTICK_2,m,r,fire);
