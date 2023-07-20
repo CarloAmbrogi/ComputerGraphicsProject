@@ -14,7 +14,7 @@
 #define OBTAIN_AUTOMATICALLY_ALL_THE_KEYS false//shoud be false
 
 //you can fly (debug)
-#define YOU_CAN_FLY true//shoud be false
+#define YOU_CAN_FLY false//shoud be false
 
 //there is the ciel (debug)
 #define THERE_IS_THE_CIEL true//shoud be true
@@ -139,7 +139,8 @@ class LabyrinthSurvival : public BaseProject {
 
     // Textures
     Texture TC, TLab, TD, TB, TK, TF;//Texture for the ciel of the labyrinth, for the labyrinth (walls and ground), for the door, for the boss, for the keys, for the food, for your HP bar
-    Texture TStartBarYourHP, TEndBarYourHP, TMidBarYourHP, TStartBarBossHP, TEndBarBossHP, TMidBarBossHP, TyourHPwritten, TbossHPwritten, TfindAllTheKeys, TKeyToTake, TKeyTook, TnowGoToTheBoss, TFireIcon, TYouWinIcon, TYouLoseIcon;//Texture for your HP bar (start, end and mid), for boss HP bar (start, end and mid), for the written about your HP, for the written about boss HP, for the written that you have to find all the keys, for the keys you have to take icon, for the keys you have took icon, for the written that you have to go to the boss, for the icon of a fire that appears when you hit the boss (during boss fight), for the icon that you win, for the icon that you lose
+    //Texture for your HP bar (start, end and mid), for boss HP bar (start, end and mid), for the written about your HP, for the written about boss HP, for the written that you have to find all the keys, for the keys you have to take icon, for the keys you have took icon, for the written that you have to go to the boss, for the icon of a fire that appears when you hit the boss (during boss fight), for the icon that you win, for the icon that you lose
+    Texture TStartBarYourHP, TEndBarYourHP, TMidBarYourHP, TStartBarBossHP, TEndBarBossHP, TMidBarBossHP, TyourHPwritten, TbossHPwritten, TfindAllTheKeys, TKeyToTake, TKeyTook, TnowGoToTheBoss, TFireIcon, TYouWinIcon, TYouLoseIcon;
     Texture Tfired, TsafeArea, TnotWatchingTheBoss, TtooDistantFromTheBoss, TbossHurtsYou, TbossHasSlammedYouAgainstToTheWall;//Texture for the writtens during the boss fight
 
     // Variables concerning the generated labyrinth
@@ -214,9 +215,9 @@ class LabyrinthSurvival : public BaseProject {
     const float dimyouLoseX = 0.85f;
 
     //variables for the boss pattern (the boss has a pattern that sometimes approaches you and sometimes goes away from you)
-    const float timeBossApproachYou = 4.5f;//how much time the boss approaches you
-    const float timeBossGoesAwayFromYou = 0.75f;//how much time the boss goes away from you
-    const float PenalityMultiplierBossGoesAwayFromYou = 4.0f;//when the boss goes away from you how faster the boss to go away respect to when the boss approaches you
+    const float timeBossApproachYou = 4.0f;//how much time the boss approaches you
+    const float timeBossGoesAwayFromYou = 0.475f;//how much time the boss goes away from you
+    const float PenalityMultiplierBossGoesAwayFromYou = 5.0f;//when the boss goes away from you how faster the boss to go away respect to when the boss approaches you
     float timeBossPatternCounter = 0.0f;//time counter for the parttner of the boss
     float bossPatternMultiplier = 1.0f;//if positive the boss approaches you; if negative the boss goes away from you
 
@@ -385,12 +386,13 @@ class LabyrinthSurvival : public BaseProject {
         MLight.init(this, "models/Light.obj");//model of a light
         MD.init(this, "models/Door_Iron.obj");//model of a door
         MB.init(this, "models/Character.obj");//model of the boss
+        //models of the ground
         MG1.init(this, "models/Ground.obj");
         MG2.init(this, "models/Ground_2pr.obj");
         MK.init(this, "models/Key.obj");//model of a key
         MF.init(this, "models/12190_Heart_v1_L3.obj");//model of a food
 
-		for(int i=0; i < r; i++) {
+		for(int i=0; i < r; i++) {//print the generated maze
 			std::cout << maze[i] << "\n";
 		}
 		std::cout << "\n";
@@ -625,18 +627,18 @@ class LabyrinthSurvival : public BaseProject {
 
 	// Here you create your pipelines and Descriptor Sets!
 	void pipelinesAndDescriptorSetsInit() {
-		// This creates a new pipeline (with the current surface), using its shaders
+		//create the pipelines
 		P1.create();
         PUI.create();
         
-        //initialize Descriptor Sets realted to the ciel of the labyrinth
+        //initialize Descriptor Sets related to the ciel of the labyrinth
         DSC.init(this, &DSL1, {
                             {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
                             {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr},
                             {2, TEXTURE, 0, &TC}
                         });
         
-        //initialize Descriptor Sets realted to the UI
+        //initialize Descriptor Sets related to the UI
 
         DSStartBarYourHP.init(this, &DSLUI, {
                     {0, UNIFORM, sizeof(UniformBufferObjectUI), nullptr},
@@ -750,7 +752,7 @@ class LabyrinthSurvival : public BaseProject {
                     {1, TEXTURE, 0, &TYouLoseIcon}
                 });
         
-        //initialize Descriptor Sets realted to the objects in the labyrinth
+        //initialize Descriptor Sets related to the objects in the labyrinth
         
         for(int i = 0; i < effectiveNumberOfKeys; i++){
             DescriptorSet additiveDS;
@@ -981,7 +983,7 @@ class LabyrinthSurvival : public BaseProject {
                     static_cast<uint32_t>(MF.indices.size()), 1, 0, 0, 0);
         }
 
-        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MStartBarYourHP.indices.size()), 1, 0, 0, 0);
+        vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MStartBarYourHP.indices.size()), 1, 0, 0, 0);//draw the models based on their indexes
         
         vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MEndBarYourHP.indices.size()), 1, 0, 0, 0);
         
@@ -1029,7 +1031,7 @@ class LabyrinthSurvival : public BaseProject {
         MW.bind(commandBuffer);
         for (int i = 0; i < DSW.size(); i++) {
             DSW[i].bind(commandBuffer, P1, currentImage);
-            vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MW.indices.size()), 1, 0, 0, 0);
+            vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MW.indices.size()), 1, 0, 0, 0);//for each descriptor set draw the model
         }
 
         MLight.bind(commandBuffer);
@@ -1049,7 +1051,7 @@ class LabyrinthSurvival : public BaseProject {
 
         for (int i = 0; i < DSG.size(); i++) {
             DSG[i].bind(commandBuffer, P1, currentImage);
-            if(groundType[i]){
+            if(groundType[i]){//draw a different ground type based on groundType vector
                 MG2.bind(commandBuffer);
                 vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MG2.indices.size()), 1, 0, 0, 0);
             } else {
@@ -1184,7 +1186,9 @@ class LabyrinthSurvival : public BaseProject {
     }
     
     glm::mat4 MakeWorldMatrixForUI(glm::vec3 UiPos, glm::vec3 UiPosOffset, glm::quat rVertical, glm::quat rHorizhontal, glm::vec3 size, float scaleMoveX, float scaleMoveY) {
-        //similar to MakeWorldMatrix but for the UI where the UiPosOffset translation is done then to move the UI according to this offset (dued to window dim and Aspect Ratio) after all rotations; moreover there is a scale to scale an UI element horizzontaly or vertically respect to the point 0,0 of the UI
+        //similar to MakeWorldMatrix but for the UI where the UiPosOffset translation is done then to move the UI according to this
+        //offset (dued to window dim and Aspect Ratio) after all rotations; moreover there is a scale to scale an UI element horizzontaly
+        //or vertically respect to the point 0,0 of the UI
         const float uiMov = 0.05f;
         const float uiOffset = 0.2f;
         glm::mat4 ScaleMove = glm::mat4(scaleMoveX,0,0,0,0,1,0,0,0,0,scaleMoveY,0,0,0,0,1);
@@ -1200,7 +1204,9 @@ class LabyrinthSurvival : public BaseProject {
     }
     
     glm::mat4 ObtainWorldMatrixForUI(float xMov, float yMov, float scaleMoveX, float scaleMoveY){
-        //objects for the UI are rotated by 90 degree vertically; then rotated basing on the camera rot, then translated basing on the position of the camera and finally adjusted in the window with some offset also depending by the Aspect Ratio of the window and the movement in case the element of the UI can move
+        //objects for the UI are rotated by 90 degree vertically; then rotated basing on the camera rot, then translated basing on the
+        //position of the camera and finally adjusted in the window with some offset also depending by the Aspect Ratio of the window
+        //and the movement in case the element of the UI can move
         const float uiMov = 0.05f;
         glm::mat4 baseTr = glm::mat4(1.0f);
         glm::quat UiRotVertical = glm::quat(glm::vec3((CamBeta + glm::radians(-90.0f)), 0, 0));
@@ -1218,12 +1224,10 @@ class LabyrinthSurvival : public BaseProject {
 	// Here is where you update the uniforms.
 	// Very likely this will be where you will be writing the logic of your application.
 	void updateUniformBuffer(uint32_t currentImage) {
+
 		const float ROT_SPEED = glm::radians(150.0f);
         const float FAST_ROT_SPEED = glm::radians(300.0f);
 		const float MOVE_SPEED = 6.0f;
-
-		static float debounce = false;
-		static int curDebounce = 0;
 
 		float deltaT;
 		glm::vec3 m = glm::vec3(0.0f), r = glm::vec3(0.0f);
@@ -1303,7 +1307,7 @@ class LabyrinthSurvival : public BaseProject {
 
         //Animation boss appear when the boss fight is started
         const float BOSS_SCALE_SPEED = 3.5f;
-        const float BOSS_START_HP_SPEED = 85.0f;
+        const float BOSS_START_HP_SPEED = 70.0f;
         if(bossFightStarted){
             bossScale += BOSS_SCALE_SPEED * deltaT;
             if(!bossFightStartedAnimationFinished){
@@ -1330,7 +1334,7 @@ class LabyrinthSurvival : public BaseProject {
             }
         }
         
-        //your movements
+        //your movements (CamAlpha and CamPos)
 		glm::vec3 ux = glm::rotate(glm::mat4(1.0f), CamAlpha, glm::vec3(0,1,0)) * glm::vec4(1,0,0,1);
 		glm::vec3 uz = glm::rotate(glm::mat4(1.0f), CamAlpha, glm::vec3(0,1,0)) * glm::vec4(0,0,-1,1);
         CamPosPrec = CamPos;
@@ -1421,7 +1425,6 @@ class LabyrinthSurvival : public BaseProject {
                 if(!youLose && !youWin){
                     youLose = true;
                     std::cout << "you lose!\n";
-                    //TODO implemen here that the game end
                 }
             }
         }
@@ -1433,17 +1436,15 @@ class LabyrinthSurvival : public BaseProject {
         // In case you take a key
         for(int i = 0; i < effectiveNumberOfKeys; i++){
             if(x == xKeyPos[i] && y == yKeyPos[i] && tookKey[i] == false){
-                if(tookKey[i] == false){
-                    int howManyRemainingKeys = 0;
-                    for(int j = 0; j < effectiveNumberOfKeys; j++){
-                        if(tookKey[j] == false){
-                            howManyRemainingKeys++;
-                        }
+                int howManyRemainingKeys = 0;
+                for(int j = 0; j < effectiveNumberOfKeys; j++){
+                    if(tookKey[j] == false){
+                        howManyRemainingKeys++;
                     }
-                    std::cout << "You took a key (remaining keys: ";
-                    std::cout << howManyRemainingKeys;
-                    std::cout << ")\n";
                 }
+                std::cout << "You took a key (remaining keys: ";
+                std::cout << howManyRemainingKeys;
+                std::cout << ")\n";
                 tookKey[i] = true;
             }
         }
@@ -1471,7 +1472,7 @@ class LabyrinthSurvival : public BaseProject {
         }
 
         const float BOSS_ROT_SPEED = glm::radians(110.0f);
-        const float BOSS_MOVE_SPEED = 0.005f;
+        const float BOSS_MOVE_SPEED = 0.01f;
         const float WALK_AWAY_SPEED = 0.04f;//speed to walk away from the boss in case the boss hurts you
 
         float distBossYou = sqrt((pow((CamPos.x - bossPos.x),2)) + (pow((CamPos.z - bossPos.z),2)));//distance between the boss and you
@@ -1516,7 +1517,7 @@ class LabyrinthSurvival : public BaseProject {
         // in case you are too near to the boss the boss the boss deals damage to you and you walk away morover you lose some life
         const float minDistFromTheBoss = 1.0f;
         const float maxDistFromTheBoss = 2.0f;//distance to walk away from the boss
-        const float damageHP = 5.0f;
+        const float damageHP = 3.75f;
         if(distBossYou < minDistFromTheBoss || youNeedToWalkAwayFromTheBoss){
             if(youNeedToWalkAwayFromTheBoss == false){//in this instant the boss hurts you
                 std::cout << "the boss hurts you\n";
@@ -1533,7 +1534,9 @@ class LabyrinthSurvival : public BaseProject {
             float walkAwayZIncr = WALK_AWAY_SPEED * sin(dirBossYou);
             CamPos.x = CamPos.x + walkAwayXIncr;
             CamPos.z = CamPos.z + walkAwayZIncr;
-            //in this case that you are walking away from the boss, we have to check that you are not going over a wall or you are exiting from the boss fight area; else it menas that you are slammed against the wall and you also take a lot of extra damages and there are some other penalities
+            //in this case that you are walking away from the boss, we have to check that you are not going over a wall or you are
+            //exiting from the boss fight area; else it menas that you are slammed against the wall and you also take a lot of extra
+            //damages and there are some other penalities
             if(youNeedToWalkAwayFromTheBoss){
                 if(labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z+minDistToWalls)][int(CamPos.x-minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x+minDistToWalls)] == true || labyrinthShape[int(CamPos.z-minDistToWalls)][int(CamPos.x-minDistToWalls)] == true || CamPos.x > originalDoorPos.x){
                     youNeedToWalkAwayFromTheBoss = false;//you are slammed against the wall and you stop to walk away from the boss
@@ -1701,16 +1704,16 @@ class LabyrinthSurvival : public BaseProject {
         
         // perspective
         // this is the perspective matrix:
-		glm::mat4 M = glm::perspective(glm::radians(45.0f), Ar, 0.01f, 45.0f);//the vertical field of view, the aspect ratio, the near and the far plane distances.
+		glm::mat4 M = glm::perspective(glm::radians(45.0f), Ar, 0.01f, 75.0f);//the vertical field of view, the aspect ratio, the near and the far plane distances.
 		M[1][1] *= -1;
         
         //view transform
-        // this is the view transform matrix:
+        // this is the view transform matrix (a matrix witch represents the position and the rotation of the camera):
 		glm::mat4 Mv =  glm::rotate(glm::mat4(1.0), -CamBeta, glm::vec3(1,0,0)) *
 						glm::rotate(glm::mat4(1.0), -CamAlpha, glm::vec3(0,1,0)) *
 						glm::translate(glm::mat4(1.0), -CamPos);
 
-		glm::mat4 ViewPrj =  M * Mv;
+		glm::mat4 ViewPrj =  M * Mv;//View projection matrix
 		UniformBufferObject ubo{};
         UniformBufferObjectUI uboUI{};
 		glm::mat4 baseTr = glm::mat4(1.0f);
@@ -1730,7 +1733,6 @@ class LabyrinthSurvival : public BaseProject {
 		gubo.lightColor = glm::vec4(1.0f, 0.27f, 0.0f, 1.0f);
 		gubo.eyePos = CamPos;
         gubo.numberOfLights = effectiveNumberOfOnLights;
-
 
         //locate the UI in the scene...
         
@@ -2110,8 +2112,8 @@ class LabyrinthSurvival : public BaseProject {
             srand(DEFAULT_RANDOM_SEED);//this is a default labyrinth in case the generation of the labyrinth take many tentatives
         }
         // Select randomly where to locate the boss fight
-        const int xLenghtBossFight = 11;//need to be an odd number
-        const int yLenghtBossFight = 11;
+        const int xLenghtBossFight = 7;//need to be an odd number
+        const int yLenghtBossFight = 7;
         int startXBossFight = rand() % (nr - xLenghtBossFight);
         int endXBossFight = startXBossFight + xLenghtBossFight;
         int startYBossFight = rand() % (nc - yLenghtBossFight);
@@ -2171,7 +2173,7 @@ class LabyrinthSurvival : public BaseProject {
             out[nr-1][j] = 'W';
         }
         // Dig the labyrinth
-        const int maxIteration = 2;
+        const int maxIteration = 3;
         bool firstIteration = true;
         for(int count = 0; count < maxIteration; count++){//dig roads for some iterations
             for(int i = 0; i < nr; i++){//iterations on the row roads
@@ -2522,16 +2524,18 @@ class LabyrinthSurvival : public BaseProject {
                                         glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
                     wallRots.push_back(rot);
                     bool conditionToAddAnOnLight = (checkInsertLight1 % lightFrequence == 0 || out[i][j] == 'B' && checkInsertLight1 % lightFrequenceBoss == 0) && effectiveNumberOfOnLights < MAX_ON_LIGHTS;
-                    if(THERE_ARE_OFF_LIGHTS || conditionToAddAnOnLight){
-                        effectiveNumberOfLights++;//add on every wall an off light
-                        glm::vec3 lightSinglePos = glm::vec3(j+0.5, 0.5, i+0.025);
-                        lightPositions.push_back(lightSinglePos);
-                        lightRots.push_back(rot);
-                    }
-                    if (conditionToAddAnOnLight) {
-                        effectiveNumberOfOnLights++;//some of these light will be also turned on
-                        glm::vec3 lightFirePos = glm::vec3(j+0.5, 0.6, i+0.125);
-                        lightFirePositions.push_back(lightFirePos);
+                    if(out[i][j] != 'D'){
+                        if(THERE_ARE_OFF_LIGHTS || conditionToAddAnOnLight){
+                            effectiveNumberOfLights++;//add on every wall an off light
+                            glm::vec3 lightSinglePos = glm::vec3(j+0.5, 0.5, i+0.025);
+                            lightPositions.push_back(lightSinglePos);
+                            lightRots.push_back(rot);
+                        }
+                        if (conditionToAddAnOnLight) {
+                            effectiveNumberOfOnLights++;//some of these light will be also turned on
+                            glm::vec3 lightFirePos = glm::vec3(j+0.5, 0.6, i+0.125);
+                            lightFirePositions.push_back(lightFirePos);
+                        }
                     }
                 }
                 if(out[i-1][j] != '#' && out[i][j] == '#'){
@@ -2544,16 +2548,18 @@ class LabyrinthSurvival : public BaseProject {
                                         glm::quat(glm::vec3(0, 0, glm::radians(0.0f)));
                     wallRots.push_back(rot);
                     bool conditionToAddAnOnLight = (checkInsertLight2 % lightFrequence == 0 || out[i-1][j] == 'B' && checkInsertLight2 % lightFrequenceBoss == 0) && effectiveNumberOfOnLights < MAX_ON_LIGHTS;
-                    if(THERE_ARE_OFF_LIGHTS || conditionToAddAnOnLight){
-                        effectiveNumberOfLights++;//add on every wall an off light
-                        glm::vec3 lightSinglePos = glm::vec3(j+0.5, 0.5, i-0.025);
-                        lightPositions.push_back(lightSinglePos);
-                        lightRots.push_back(rot);
-                    }
-                    if (conditionToAddAnOnLight) {
-                        effectiveNumberOfOnLights++;//some of these light will be also turned on
-                        glm::vec3 lightFirePos = glm::vec3(j+0.5, 0.6, i-0.125);
-                        lightFirePositions.push_back(lightFirePos);
+                    if(out[i-1][j] != 'D'){
+                        if(THERE_ARE_OFF_LIGHTS || conditionToAddAnOnLight){
+                            effectiveNumberOfLights++;//add on every wall an off light
+                            glm::vec3 lightSinglePos = glm::vec3(j+0.5, 0.5, i-0.025);
+                            lightPositions.push_back(lightSinglePos);
+                            lightRots.push_back(rot);
+                        }
+                        if (conditionToAddAnOnLight) {
+                            effectiveNumberOfOnLights++;//some of these light will be also turned on
+                            glm::vec3 lightFirePos = glm::vec3(j+0.5, 0.6, i-0.125);
+                            lightFirePositions.push_back(lightFirePos);
+                        }
                     }
                 }
             }
