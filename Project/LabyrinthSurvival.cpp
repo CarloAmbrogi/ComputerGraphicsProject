@@ -14,7 +14,7 @@
 #define OBTAIN_AUTOMATICALLY_ALL_THE_KEYS false//shoud be false
 
 //you can fly (debug)
-#define YOU_CAN_FLY false//shoud be false
+#define YOU_CAN_FLY true//shoud be false
 
 //there is the ciel (debug)
 #define THERE_IS_THE_CIEL true//shoud be true
@@ -123,11 +123,11 @@ class LabyrinthSurvival : public BaseProject {
     Model MYouLoseIcon;//Model MYouLoseIcon for the icon that you lose
 
     // Models game
-    std::vector<Model> MW;//model MW for the walls
-    std::vector<Model> MLights;//model MLights for the lights
-    std::vector<Model> MK;//model MK for the keys
-    std::vector<Model> MF;//model MF for the food
-    std::vector<Model> MG;//model MW for the ground
+    Model MW;//model MW for the walls
+    Model MLight;//model MLight for the lights
+    Model MK;//model MK for the keys
+    Model MF;//model MF for the food
+    Model MG1, MG2;//model MW for the ground
     Model MD;//model MD for the door
     Model MB;//model MB for the boss
     Model MC{};//Model MC for the ciel of the labyrinth
@@ -272,6 +272,7 @@ class LabyrinthSurvival : public BaseProject {
     float zEndLimitBossPos;
 
     //parameters for the ground pos, rot and scale
+    std::vector<bool> groundType;
     std::vector<glm::vec3> groundPos;
     glm::quat groundRot = glm::quat(glm::vec3(0, glm::radians(180.0f), 0)) *
                        glm::quat(glm::vec3(glm::radians(0.0f), 0, 0)) *
@@ -375,45 +376,14 @@ class LabyrinthSurvival : public BaseProject {
         int c = NUMCOL;
         char **maze = genMaze(r, c);
 
-        for (int i = 0; i < effectiveNumberOfWalls; i++) {
-            Model wall;
-            wall.init(this, "models/HighWall.obj");//model of a wall
-            MW.push_back(wall);
-        }
-
-        for (int i = 0; i < effectiveNumberOfLights; i++) {
-            Model light;
-            light.init(this, "models/Light.obj");//model of a light
-            MLights.push_back(light);
-        }
-
+        MW.init(this, "models/HighWall.obj");//model of a wall
+        MLight.init(this, "models/Light.obj");//model of a light
         MD.init(this, "models/Wall.obj");//model of a door
-
         MB.init(this, "models/Character.obj");//model of the boss
-
-        for (int i = 0; i < effectiveNumberOfGround; i++) {
-            Model ground;
-            //model of a ground: for each pice of ground, initializate randomly one of the two model of a ground
-            int kindOfGround = rand() % 5;
-            if(kindOfGround == 0){
-                ground.init(this, "models/Ground_2pr.obj");
-            } else {
-                ground.init(this, "models/Ground.obj");
-            }
-            MG.push_back(ground);
-        }
-
-        for(int i = 0; i < effectiveNumberOfKeys; i++){
-            Model key;
-            key.init(this, "models/Key.obj");//model of a key
-            MK.push_back(key);
-        }
-
-        for(int i = 0; i < effectiveNumberOfFood; i++){
-            Model food;
-            food.init(this, "models/12190_Heart_v1_L3.obj");//model of a food
-            MF.push_back(food);
-        }
+        MG1.init(this, "models/Ground.obj");
+        MG2.init(this, "models/Ground_2pr.obj");
+        MK.init(this, "models/Key.obj");//model of a key
+        MF.init(this, "models/12190_Heart_v1_L3.obj");//model of a food
 
 		for(int i=0; i < r; i++) {
 			std::cout << maze[i] << "\n";
@@ -798,7 +768,7 @@ class LabyrinthSurvival : public BaseProject {
             DSF.push_back(additiveDS);
         }
 
-        for (Model wall : MW) {
+        for (int i = 0; i < effectiveNumberOfWalls; i++) {
             DescriptorSet DSWall;
             DSWall.init(this, &DSL1, {
                     {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
@@ -808,7 +778,7 @@ class LabyrinthSurvival : public BaseProject {
             DSW.push_back(DSWall);
         }
 
-        for (Model light : MLights) {
+        for (int i = 0; i < effectiveNumberOfLights; i++) {
             DescriptorSet DSLight;
             DSLight.init(this, &DSL1, {
                     {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
@@ -830,7 +800,7 @@ class LabyrinthSurvival : public BaseProject {
                 {2, TEXTURE, 0, &TB}
         });
 
-        for (Model ground : MG) {
+        for (int i = 0; i < effectiveNumberOfGround; i++) {
             DescriptorSet DSGround;
             DSGround.init(this, &DSL1, {
                     {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
@@ -963,23 +933,14 @@ class LabyrinthSurvival : public BaseProject {
         
         //clean up models related to the objects in the labyrinth
         MC.cleanup();
-        for (Model key : MK){
-            key.cleanup();
-        }
-        for (Model wall : MW) {
-            wall.cleanup();
-        }
-        for (Model light : MLights) {
-            light.cleanup();
-        }
+        MK.cleanup();
+        MW.cleanup();
+        MLight.cleanup();
         MD.cleanup();
         MB.cleanup();
-        for (Model ground : MG) {
-            ground.cleanup();
-        }
-        for (Model food : MF){
-            food.cleanup();
-        }
+        MG1.cleanup();
+        MG2.cleanup();
+        MF.cleanup();
         
         //clean up descriptor set layout
 		DSL1.cleanup();
@@ -1003,18 +964,18 @@ class LabyrinthSurvival : public BaseProject {
                 vkCmdDrawIndexed(commandBuffer,
                         static_cast<uint32_t>(MC.indices.size()), 1, 0, 0, 0);
 
-        for(int i = 0; i < MK.size(); i++){
-            MK[i].bind(commandBuffer);
+        MK.bind(commandBuffer);
+        for(int i = 0; i < DSK.size(); i++){
             DSK[i].bind(commandBuffer, P1, currentImage);
             vkCmdDrawIndexed(commandBuffer,
-                    static_cast<uint32_t>(MK[i].indices.size()), 1, 0, 0, 0);
+                    static_cast<uint32_t>(MK.indices.size()), 1, 0, 0, 0);
         }
 
-        for(int i = 0; i < MF.size(); i++){
-            MF[i].bind(commandBuffer);
+        MF.bind(commandBuffer);
+        for(int i = 0; i < DSF.size(); i++){
             DSF[i].bind(commandBuffer, P1, currentImage);
             vkCmdDrawIndexed(commandBuffer,
-                    static_cast<uint32_t>(MF[i].indices.size()), 1, 0, 0, 0);
+                    static_cast<uint32_t>(MF.indices.size()), 1, 0, 0, 0);
         }
 
         vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MStartBarYourHP.indices.size()), 1, 0, 0, 0);
@@ -1061,18 +1022,18 @@ class LabyrinthSurvival : public BaseProject {
         vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MYouWinIcon.indices.size()), 1, 0, 0, 0);
         
         vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MYouLoseIcon.indices.size()), 1, 0, 0, 0);
-        
-        for (int i = 0; i < MW.size(); i++) {
-            MW[i].bind(commandBuffer);
+
+        MW.bind(commandBuffer);
+        for (int i = 0; i < DSW.size(); i++) {
             DSW[i].bind(commandBuffer, P1, currentImage);
-            vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MW[i].indices.size()), 1, 0, 0, 0);
+            vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MW.indices.size()), 1, 0, 0, 0);
         }
 
-        for(int i = 0; i < MLights.size(); i++){
-            MLights[i].bind(commandBuffer);
+        MLight.bind(commandBuffer);
+        for(int i = 0; i < DSLights.size(); i++){
             DSLights[i].bind(commandBuffer, P1, currentImage);
             vkCmdDrawIndexed(commandBuffer,
-                             static_cast<uint32_t>(MLights[i].indices.size()), 1, 0, 0, 0);
+                             static_cast<uint32_t>(MLight.indices.size()), 1, 0, 0, 0);
         }
 
         MD.bind(commandBuffer);
@@ -1083,10 +1044,15 @@ class LabyrinthSurvival : public BaseProject {
         DSB.bind(commandBuffer, P1, currentImage);
         vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MB.indices.size()), 1, 0, 0, 0);
 
-        for (int i = 0; i < MG.size(); i++) {
-            MG[i].bind(commandBuffer);
+        for (int i = 0; i < DSG.size(); i++) {
             DSG[i].bind(commandBuffer, P1, currentImage);
-            vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MG[i].indices.size()), 1, 0, 0, 0);
+            if(groundType[i]){
+                MG2.bind(commandBuffer);
+                vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MG2.indices.size()), 1, 0, 0, 0);
+            } else {
+                MG1.bind(commandBuffer);
+                vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MG1.indices.size()), 1, 0, 0, 0);
+            }
         }
         
         vkCmdDrawIndexed(commandBuffer,static_cast<uint32_t>(MC.indices.size()), 1, 0, 0, 0);
@@ -2018,7 +1984,7 @@ class LabyrinthSurvival : public BaseProject {
                 DSC.map(currentImage, &gubo, sizeof(gubo), 1);
         
         //keys
-        for(int i = 0; i < MK.size(); i++){
+        for(int i = 0; i < DSK.size(); i++){
             if(tookKey[i]){
                 ubo.mMat = MakeWorldMatrix(notVisiblePosition, KeyRot, KeyScale) * baseTr;//do not show a key you have already took
             } else {
@@ -2031,7 +1997,7 @@ class LabyrinthSurvival : public BaseProject {
         }
         
         //food
-        for(int i = 0; i < MF.size(); i++){
+        for(int i = 0; i < DSF.size(); i++){
             if(tookFood[i]){
                 ubo.mMat = MakeWorldMatrix(notVisiblePosition, FoodRot, FoodScale) * baseTr;//do not show a pice of food you have already took
             } else {
@@ -2047,7 +2013,7 @@ class LabyrinthSurvival : public BaseProject {
         }
         
         //Walls
-        for (int i = 0; i < MW.size(); i++) {
+        for (int i = 0; i < DSW.size(); i++) {
             ubo.mMat = MakeWorldMatrix(wallPos[i], wallRots[i], wallScale) * baseTr;//translate and rotate the walls to locate
             ubo.mvpMat = ViewPrj * ubo.mMat;
             ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
@@ -2058,7 +2024,7 @@ class LabyrinthSurvival : public BaseProject {
             DSW[i].map(currentImage, &gubo, sizeof(gubo), 1);
         }
 
-        for (int i = 0; i < MLights.size(); i++) {
+        for (int i = 0; i < DSLights.size(); i++) {
             ubo.mMat = MakeWorldMatrix(lightPositions[i], lightRots[i], lightScale);//translate and rotate the walls to locate
             ubo.mvpMat = ViewPrj * ubo.mMat;
             ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
@@ -2083,8 +2049,12 @@ class LabyrinthSurvival : public BaseProject {
         DSB.map(currentImage, &gubo, sizeof(gubo), 1);
         
         //ground
-        for (int i = 0; i < MG.size(); i++) {
-            ubo.mMat = MakeWorldMatrix(groundPos[i], groundRot, groundScale) * baseTr;//translate the ground to locate
+        for (int i = 0; i < DSG.size(); i++) {
+            if (groundType[i]) {
+                ubo.mMat = MakeWorldMatrix(groundPos[i], groundRot, groundScale) * baseTr;//translate the ground to locate
+            } else {
+                ubo.mMat = MakeWorldMatrix(groundPos[i], groundRot, groundScale) * baseTr;//translate the ground to locate
+            }
             ubo.mvpMat = ViewPrj * ubo.mMat;
             ubo.nMat = glm::inverse(glm::transpose(ubo.mMat));
             DSG[i].map(currentImage, &ubo, sizeof(ubo), 0);
@@ -2436,7 +2406,14 @@ class LabyrinthSurvival : public BaseProject {
                     labyrinthShape[i][j] = true;
                 } else {
                     labyrinthShape[i][j] = false;
+                    // decide which type of ground place
                     groundPos.push_back(glm::vec3(j+0.5, 0.0, i+0.5));//also locate the ground where you can go
+                    int kindOfGround = rand() % 5;
+                    if(kindOfGround == 0){
+                        groundType.push_back(true);
+                    } else {
+                        groundType.push_back(false);
+                    }
                     effectiveNumberOfGround++;
                 }
             }
