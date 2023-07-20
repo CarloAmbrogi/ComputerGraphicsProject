@@ -4,9 +4,9 @@
 #define MAX_LIGHTS 150
 
 layout(binding = 0) uniform UniformBufferObject {
-	mat4 mvpMat;
-	mat4 mMat;
-	mat4 nMat;
+	mat4 mvpMat;//model view projection matrix (3 transforms)
+	mat4 mMat;//model matrix
+	mat4 nMat;//normal matrix
 	float roughness;
 	float ao;
 	float metallic;
@@ -34,6 +34,7 @@ void main() {
 	fragNorm = (ubo.nMat * vec4(inNorm, 0.0)).xyz;
 	fragUV = inUV;
 
+	//pass to fragment shader
 	roughness = ubo.roughness;
 	ao = ubo.ao;
 	metallic = ubo.metallic;
