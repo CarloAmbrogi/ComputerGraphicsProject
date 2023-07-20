@@ -130,7 +130,7 @@ class LabyrinthSurvival : public BaseProject {
     Model MC{};//Model MC for the ciel of the labyrinth
 
     // Textures
-    Texture TC, TW, TD, TB, TG, TK, TF;//Texture for the ciel of the labyrinth, for the wall, the door, the boss, the ground, for the keys, for the food, for your HP bar
+    Texture TC, TLab, TD, TB, TG, TK, TF;//Texture for the ciel of the labyrinth, for the wall, the door, the boss, the ground, for the keys, for the food, for your HP bar
     Texture TStartBarYourHP, TEndBarYourHP, TMidBarYourHP, TStartBarBossHP, TEndBarBossHP, TMidBarBossHP, TyourHPwritten, TbossHPwritten, TfindAllTheKeys, TKeyToTake, TKeyTook, TnowGoToTheBoss, TFireIcon, TYouWinIcon, TYouLoseIcon;//Texture for your HP bar (start, end and mid), for boss HP bar (start, end and mid), for the written about your HP, for the written about boss HP, for the written that you have to find all the keys, for the keys you have to take icon, for the keys you have took icon, for the written that you have to go to the boss, for the icon of a fire that appears when you hit the boss (during boss fight), for the icon that you win, for the icon that you lose
     Texture Tfired, TsafeArea, TnotWatchingTheBoss, TtooDistantFromTheBoss, TbossHurtsYou, TbossHasSlammedYouAgainstToTheWall;//Texture for the writtens during the boss fight
 
@@ -391,11 +391,11 @@ class LabyrinthSurvival : public BaseProject {
         for (int i = 0; i < effectiveNumberOfGround; i++) {
             Model ground;
             //model of a ground: for each pice of ground, initializate randomly one of the two model of a ground
-            int kindOfGround = rand() % 2;
+            int kindOfGround = rand() % 5;
             if(kindOfGround == 0){
-                ground.init(this, "models/Groundpr.obj");
-            } else {
                 ground.init(this, "models/Ground_2pr.obj");
+            } else {
+                ground.init(this, "models/Ground.obj");
             }
             MG.push_back(ground);
         }
@@ -541,7 +541,7 @@ class LabyrinthSurvival : public BaseProject {
         
         //initialize textures for the models of the objects in the labyrinth
         TC.init(this, "textures/wall.png");
-        TW.init(this, "textures/ModelWallTexture.png");
+        TLab.init(this, "textures/ModelWallTexture.png");
         TD.init(this, "textures/door.png");
         TB.init(this, "textures/bossTry2.png");
         TG.init(this, "textures/ground.png");
@@ -800,7 +800,7 @@ class LabyrinthSurvival : public BaseProject {
             DSWall.init(this, &DSL1, {
                     {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
                     {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr},
-                    {2, TEXTURE, 0, &TW}
+                    {2, TEXTURE, 0, &TLab}
             });
             DSW.push_back(DSWall);
         }
@@ -810,7 +810,7 @@ class LabyrinthSurvival : public BaseProject {
             DSLight.init(this, &DSL1, {
                     {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
                     {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr},
-                    {2, TEXTURE, 0, &TW}
+                    {2, TEXTURE, 0, &TLab}
             });
             DSLights.push_back(DSLight);
         }
@@ -832,7 +832,7 @@ class LabyrinthSurvival : public BaseProject {
             DSGround.init(this, &DSL1, {
                     {0, UNIFORM, sizeof(UniformBufferObject), nullptr},
                     {1, UNIFORM, sizeof(GlobalUniformBufferObject), nullptr},
-                    {2, TEXTURE, 0, &TG}
+                    {2, TEXTURE, 0, &TLab}
             });
             DSG.push_back(DSGround);
         }
@@ -901,7 +901,7 @@ class LabyrinthSurvival : public BaseProject {
 	void localCleanup() {
         //clean up textures related to the objects in the labyrinth
         TC.cleanup();
-        TW.cleanup();
+        TLab.cleanup();
         TD.cleanup();
         TB.cleanup();
         TG.cleanup();
@@ -2161,7 +2161,7 @@ class LabyrinthSurvival : public BaseProject {
             out[nr-1][j] = 'W';
         }
         // Dig the labyrinth
-        const int maxIteration = 4;
+        const int maxIteration = 2;
         bool firstIteration = true;
         for(int count = 0; count < maxIteration; count++){//dig roads for some iterations
             for(int i = 0; i < nr; i++){//iterations on the row roads
