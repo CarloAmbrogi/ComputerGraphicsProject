@@ -11,13 +11,13 @@
 #define DEFAULT_RANDOM_SEED 1
 
 //obtain automatically all the keys (debug)
-#define OBTAIN_AUTOMATICALLY_ALL_THE_KEYS true//shoud be false
+#define OBTAIN_AUTOMATICALLY_ALL_THE_KEYS false//shoud be false
 
 //you can fly (debug)
 #define YOU_CAN_FLY false//shoud be false
 
 //there is the ciel (debug)
-#define THERE_IS_THE_CIEL false//shoud be true
+#define THERE_IS_THE_CIEL true//shoud be true
 
 //if you lose you can't move (debug)
 #define IF_YOU_LOSE_YOU_CANT_MOVE true//shoud be true
@@ -1731,10 +1731,12 @@ class LabyrinthSurvival : public BaseProject {
 		}
         
         // perspective
+        // this is the perspective matrix:
 		glm::mat4 M = glm::perspective(glm::radians(45.0f), Ar, 0.01f, 45.0f);//the vertical field of view, the aspect ratio, the near and the far plane distances.
 		M[1][1] *= -1;
         
         //view transform
+        // this is the view transform matrix:
 		glm::mat4 Mv =  glm::rotate(glm::mat4(1.0), -CamBeta, glm::vec3(1,0,0)) *
 						glm::rotate(glm::mat4(1.0), -CamAlpha, glm::vec3(0,1,0)) *
 						glm::translate(glm::mat4(1.0), -CamPos);
