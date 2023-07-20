@@ -25,7 +25,7 @@
 //if there are off lights (debug)
 #define THERE_ARE_OFF_LIGHTS true//shoud be true
 
-// The uniform buffer object used in this example
+// The uniform buffer object
 struct UniformBufferObject {
 	alignas(16) glm::mat4 mvpMat;
 	alignas(16) glm::mat4 mMat;
@@ -35,6 +35,7 @@ struct UniformBufferObject {
     alignas(4) float metallic;
 };
 
+// The global uniform buffer object
 struct GlobalUniformBufferObject {
 	alignas(16) glm::vec4 lightPos[MAX_ON_LIGHTS];
 	alignas(16) glm::vec4 lightColor;
@@ -42,6 +43,7 @@ struct GlobalUniformBufferObject {
     alignas(4) int numberOfLights;
 };
 
+// The global uniform buffer object related to the UI
 struct UniformBufferObjectUI {
     alignas(16) glm::mat4 mvpMat;
     alignas(16) glm::mat4 mMat;
@@ -289,8 +291,8 @@ class LabyrinthSurvival : public BaseProject {
 	// Here you set the main application parameters
 	void setWindowParameters() {
 		// window size, titile and initial background
-		windowWidth = 800;
-		windowHeight = 600;
+		windowWidth = 1000;
+		windowHeight = 750;
 		windowTitle = "LabyrinthSurvival";
     	windowResizable = GLFW_TRUE;
 		initialBackgroundColor = {0.0f, 0.6f, 0.8f, 1.0f};
