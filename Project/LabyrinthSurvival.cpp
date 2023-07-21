@@ -1517,7 +1517,7 @@ class LabyrinthSurvival : public BaseProject {
         // in case you are too near to the boss the boss the boss deals damage to you and you walk away morover you lose some life
         const float minDistFromTheBoss = 1.0f;
         const float maxDistFromTheBoss = 2.0f;//distance to walk away from the boss
-        const float damageHP = 3.75f;
+        const float damageHP = 3.65f;
         if(distBossYou < minDistFromTheBoss || youNeedToWalkAwayFromTheBoss){
             if(youNeedToWalkAwayFromTheBoss == false){//in this instant the boss hurts you
                 std::cout << "the boss hurts you\n";
@@ -2112,8 +2112,8 @@ class LabyrinthSurvival : public BaseProject {
             srand(DEFAULT_RANDOM_SEED);//this is a default labyrinth in case the generation of the labyrinth take many tentatives
         }
         // Select randomly where to locate the boss fight
-        const int xLenghtBossFight = 7;//need to be an odd number
-        const int yLenghtBossFight = 7;
+        const int xLenghtBossFight = 9;//need to be an odd number
+        const int yLenghtBossFight = 9;
         int startXBossFight = rand() % (nr - xLenghtBossFight);
         int endXBossFight = startXBossFight + xLenghtBossFight;
         int startYBossFight = rand() % (nc - yLenghtBossFight);
